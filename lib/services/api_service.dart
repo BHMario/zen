@@ -45,6 +45,8 @@ class ApiService {
     required String name,
     required String email,
     required String password,
+    String? phone,
+    required bool lopdAccepted,
   }) async {
     try {
       debugPrint('📝 Registrando usuario: $email');
@@ -55,6 +57,8 @@ class ApiService {
           'name': name,
           'email': email,
           'password': password,
+          'phone': phone,
+          'lopd_accepted': lopdAccepted,
         }),
       ).timeout(const Duration(seconds: 10));
 
@@ -108,6 +112,31 @@ class ApiService {
     } catch (e) {
       debugPrint('❌ Error en login: $e');
       rethrow;
+    }
+  }
+
+  // ==================== USERS ====================
+
+  static Future<Map<String, dynamic>?> getUserById(String userId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.get(
+        Uri.parse('$baseUrl/users/$userId'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
+        return null;
+      } else {
+        debugPrint('⚠️ Error obteniendo usuario: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ Error obteniendo usuario: $e');
+      return null;
     }
   }
 

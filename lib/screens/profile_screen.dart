@@ -128,6 +128,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             const SizedBox(height: 12),
                             _buildInfoCard(
                               context,
+                              icon: Icons.phone_outlined,
+                              label: 'Teléfono',
+                              value: userDetails['phone'] as String? ?? 'No disponible',
+                              color: ZenTheme.primaryColor,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildInfoCard(
+                              context,
                               icon: Icons.calendar_today_outlined,
                               label: 'Miembro desde',
                               value: DateTimeUtils.formatDate(

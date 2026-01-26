@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:zen/providers/providers.dart';
 import 'package:zen/theme/zen_theme.dart';
 import 'package:zen/utils/utils.dart';
+import 'package:zen/utils/country_codes.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,29 +15,39 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   late TextEditingController _emailController;
   late TextEditingController _passwordController;
+  late TextEditingController _confirmPasswordController;
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
+  late TextEditingController _phoneController;
   
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _lopdAccepted = false;
   DateTime? _selectedBirthDate;
+  late CountryCode _selectedCountry;
   
   final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
     super.initState();
+    _selectedCountry = CountryCodes.getDefault();
     _emailController = TextEditingController();
     _passwordController = TextEditingController();
+    _confirmPasswordController = TextEditingController();
     _firstNameController = TextEditingController();
     _lastNameController = TextEditingController();
+    _phoneController = TextEditingController();
   }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -87,13 +98,22 @@ class _LoginScreenState extends State<LoginScreen> {
         );
         return;
       }
+      
+      if (!_lopdAccepted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Debe aceptar la LOPD para continuar')),
+        );
+        return;
+      }
 
       context.read<AuthProvider>().register(
         email: _emailController.text.trim(),
         password: _passwordController.text,
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
+        phone: '${_selectedCountry.code}${_phoneController.text.trim()}',
         birthDate: _selectedBirthDate!,
+        lopdAccepted: _lopdAccepted,
       );
     }
   }
@@ -176,6 +196,39 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           const SizedBox(height: 16),
+                          // Selector de país
+                          DropdownButtonFormField<CountryCode>(
+                            value: _selectedCountry,
+                            decoration: InputDecoration(
+                              hintText: 'País',
+                              prefixIcon: const Icon(Icons.public_outlined),
+                            ),
+                            items: CountryCodes.countries.map((country) {
+                              return DropdownMenuItem(
+                                value: country,
+                                child: Text('${country.flag} ${country.name} (${country.code})'),
+                              );
+                            }).toList(),
+                            onChanged: (CountryCode? newValue) {
+                              if (newValue != null) {
+                                setState(() {
+                                  _selectedCountry = newValue;
+                                });
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            decoration: InputDecoration(
+                              hintText: 'Teléfono (sin código de país)',
+                              prefixIcon: const Icon(Icons.phone_outlined),
+                            ),
+                            validator: (value) =>
+                                ValidationUtils.validatePhone(value),
+                          ),
+                          const SizedBox(height: 16),
                         ],
                         
                         // Email
@@ -218,6 +271,103 @@ class _LoginScreenState extends State<LoginScreen> {
                           validator: (value) =>
                               ValidationUtils.validatePassword(value),
                         ),
+                        
+                        // Confirmar contraseña (solo en registro)
+                        if (!authProvider.isLogin) ...[
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _confirmPasswordController,
+                            obscureText: _obscureConfirmPassword,
+                            decoration: InputDecoration(
+                              hintText: 'Confirmar contraseña',
+                              prefixIcon: const Icon(Icons.lock_outlined),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscureConfirmPassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscureConfirmPassword = !_obscureConfirmPassword;
+                                  });
+                                },
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Confirma tu contraseña';
+                              }
+                              if (value != _passwordController.text) {
+                                return 'Las contraseñas no coinciden';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
+                        
+                        // Checkbox LOPD (solo en registro)
+                        if (!authProvider.isLogin) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: ZenTheme.dividerColor,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _lopdAccepted 
+                                    ? ZenTheme.primaryColor 
+                                    : ZenTheme.borderColor,
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: Checkbox(
+                                    value: _lopdAccepted,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _lopdAccepted = value ?? false;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _lopdAccepted = !_lopdAccepted;
+                                      });
+                                    },
+                                    child: RichText(
+                                      text: TextSpan(
+                                        text: 'Autorizo el tratamiento de mis datos personales según la ',
+                                        style: Theme.of(context).textTheme.bodySmall,
+                                        children: [
+                                          TextSpan(
+                                            text: 'Política de Privacidad',
+                                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                              color: ZenTheme.primaryColor,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          TextSpan(
+                                            text: ' y consiento el procesamiento de mis datos para la prestación del servicio, de conformidad con la LOPDGDD y RGPD.',
+                                            style: Theme.of(context).textTheme.bodySmall,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 24),
                         
                         // Mensaje de error
@@ -285,10 +435,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                     _formKey.currentState?.reset();
                                     _emailController.clear();
                                     _passwordController.clear();
+                                    _confirmPasswordController.clear();
                                     _firstNameController.clear();
                                     _lastNameController.clear();
+                                    _phoneController.clear();
                                     setState(() {
                                       _selectedBirthDate = null;
+                                      _lopdAccepted = false;
+                                      _selectedCountry = CountryCodes.getDefault();
                                     });
                                     context
                                         .read<AuthProvider>()

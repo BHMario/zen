@@ -10,7 +10,7 @@ module.exports = (pool) => {
       const connection = await pool.getConnection();
 
       const [rows] = await connection.execute(
-        'SELECT id, name, email, created_at, updated_at FROM users WHERE id = ?',
+        'SELECT id, name, email, phone, created_at, updated_at FROM users WHERE id = ?',
         [userId]
       );
 

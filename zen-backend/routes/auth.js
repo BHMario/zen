@@ -9,10 +9,14 @@ module.exports = (pool) => {
   // Registrar usuario
   router.post('/register', async (req, res) => {
     try {
-      const { name, email, password } = req.body;
+      const { name, email, password, phone, lopd_accepted } = req.body;
 
-      if (!name || !email || !password) {
+      if (!name || !email || !password || !phone) {
         return res.status(400).json({ error: 'Faltan datos requeridos' });
+      }
+
+      if (!lopd_accepted) {
+        return res.status(400).json({ error: 'Debe aceptar la LOPD' });
       }
 
       const connection = await pool.getConnection();
@@ -34,8 +38,8 @@ module.exports = (pool) => {
 
       // Insertar usuario
       await connection.execute(
-        'INSERT INTO users (id, name, email, password) VALUES (?, ?, ?, ?)',
-        [userId, name, email, hashedPassword]
+        'INSERT INTO users (id, name, email, password, phone, lopd_accepted) VALUES (?, ?, ?, ?, ?, ?)',
+        [userId, name, email, hashedPassword, phone, lopd_accepted ? 1 : 0]
       );
 
       connection.release();
@@ -52,6 +56,7 @@ module.exports = (pool) => {
         userId: userId,
         name: name,
         email: email,
+        phone: phone,
         token: token
       });
     } catch (error) {
@@ -73,7 +78,7 @@ module.exports = (pool) => {
 
       // Buscar usuario
       const [rows] = await connection.execute(
-        'SELECT id, name, email, password FROM users WHERE email = ?',
+        'SELECT id, name, email, password, phone FROM users WHERE email = ?',
         [email]
       );
 
@@ -104,6 +109,7 @@ module.exports = (pool) => {
         userId: user.id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
         token: token
       });
     } catch (error) {

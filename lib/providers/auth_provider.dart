@@ -51,6 +51,7 @@ class AuthProvider extends ChangeNotifier {
           id: userId,
           name: result['name'] ?? '',
           email: result['email'] ?? '',
+          phone: result['phone'],
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
           isEmailVerified: result['is_email_verified'] ?? false,
@@ -77,6 +78,8 @@ class AuthProvider extends ChangeNotifier {
     required String firstName,
     required String lastName,
     required DateTime birthDate,
+    String? phone,
+    required bool lopdAccepted,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -87,6 +90,8 @@ class AuthProvider extends ChangeNotifier {
         name: '$firstName $lastName',
         email: email,
         password: password,
+        phone: phone,
+        lopdAccepted: lopdAccepted,
       );
 
       if (result.containsKey('error')) {
@@ -106,9 +111,11 @@ class AuthProvider extends ChangeNotifier {
           id: userId,
           name: '$firstName $lastName',
           email: email,
+          phone: phone,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
           isEmailVerified: false,
+          lopdAccepted: lopdAccepted,
         );
         _errorMessage = null;
         
@@ -135,6 +142,7 @@ class AuthProvider extends ChangeNotifier {
     return {
       'email': _currentUser!.email,
       'name': _currentUser!.name,
+      'phone': _currentUser!.phone,
       'createdAt': _currentUser!.createdAt.toIso8601String(),
     };
   }
@@ -201,6 +209,18 @@ class AuthProvider extends ChangeNotifier {
     try {
       debugPrint('🔄 Sincronizando datos para usuario: $userId');
       
+      // Cargar datos del usuario incluyendo teléfono
+      try {
+        final userDataResult = await ApiService.getUserById(userId);
+        if (userDataResult != null && userDataResult.containsKey('phone')) {
+          _currentUser = _currentUser?.copyWith(
+            phone: userDataResult['phone'] as String?,
+          );
+        }
+      } catch (e) {
+        debugPrint('⚠️ Error cargando datos del usuario: $e');
+      }
+      
       // Se ejecutan en paralelo para mejorar rendimiento
       await Future.wait([
         // Tareas
@@ -216,6 +236,7 @@ class AuthProvider extends ChangeNotifier {
       ]);
       
       debugPrint('✅ Datos sincronizados correctamente');
+      notifyListeners();
     } catch (e) {
       debugPrint('❌ Error sincronizando datos: $e');
     }

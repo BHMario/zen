@@ -106,4 +106,32 @@ class ValidationUtils {
     
     return age;
   }
+
+  // Validar teléfono (sin código de país, solo la parte local)
+  static String? validatePhone(String? phone) {
+    if (phone == null || phone.isEmpty) {
+      // El teléfono es obligatorio
+      return 'El teléfono es requerido';
+    }
+    
+    // Aceptar números, espacios y guiones
+    final phoneRegex = RegExp(r'^[\d\s\-]+$');
+    
+    if (!phoneRegex.hasMatch(phone)) {
+      return 'El teléfono solo puede contener números, espacios y guiones';
+    }
+    
+    // Solo contar dígitos
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    
+    if (digits.length < 7) {
+      return 'El teléfono debe tener al menos 7 dígitos';
+    }
+    
+    if (digits.length > 15) {
+      return 'El teléfono no puede exceder 15 dígitos';
+    }
+    
+    return null;
+  }
 }
