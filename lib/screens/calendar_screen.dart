@@ -159,19 +159,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final daysInMonth = lastDay.day;
     final firstWeekday = firstDay.weekday;
 
-    final days = <int>[];
-    // Días del mes anterior
-    for (int i = firstWeekday - 1; i > 0; i--) {
-      days.add(-i);
-    }
-    // Días del mes actual
-    for (int i = 1; i <= daysInMonth; i++) {
-      days.add(i);
-    }
-    // Días del mes siguiente
-    final remainingDays = 42 - days.length;
-    for (int i = 1; i <= remainingDays; i++) {
-      days.add(100 + i);
+    // Calcular la primera fecha a mostrar (puede ser del mes anterior)
+    DateTime startDate = firstDay.subtract(Duration(days: firstWeekday - 1));
+
+    // Crear lista de 42 fechas (6 semanas)
+    final calendarDates = <DateTime>[];
+    for (int i = 0; i < 42; i++) {
+      calendarDates.add(startDate.add(Duration(days: i)));
     }
 
     return Consumer<TaskProvider>(
@@ -205,37 +199,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   crossAxisSpacing: 4,
                   mainAxisSpacing: 4,
                 ),
-                itemCount: days.length,
+                itemCount: calendarDates.length,
                 itemBuilder: (context, index) {
-                  final day = days[index];
-                  final isCurrentMonth = day > 0 && day <= daysInMonth;
-                  DateTime? date;
+                  final date = calendarDates[index];
+                  final isCurrentMonth = date.year == _displayedMonth.year &&
+                      date.month == _displayedMonth.month;
 
-                  if (isCurrentMonth) {
-                    date = DateTime(
-                      _displayedMonth.year,
-                      _displayedMonth.month,
-                      day,
-                    );
-                  }
+                  final tasksForDay = taskProvider.getTasksByDate(date);
 
-                  final tasksForDay = date != null
-                      ? taskProvider.getTasksByDate(date)
-                      : <Task>[];
-
-                  final isSelected = isCurrentMonth &&
-                      date?.day == _selectedDate.day &&
-                      date?.month == _selectedDate.month &&
-                      date?.year == _selectedDate.year;
+                  final isSelected = date.day == _selectedDate.day &&
+                      date.month == _selectedDate.month &&
+                      date.year == _selectedDate.year;
 
                   return GestureDetector(
-                    onTap: isCurrentMonth
-                        ? () {
-                            setState(() {
-                              _selectedDate = date!;
-                            });
-                          }
-                        : null,
+                    onTap: () {
+                      setState(() {
+                        _selectedDate = date;
+                      });
+                    },
                     child: Container(
                       decoration: BoxDecoration(
                         color: isSelected
@@ -255,7 +236,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             left: 4,
                             right: 4,
                             child: Text(
-                              day > 0 ? day.toString() : '',
+                              date.day.toString(),
                               style: Theme.of(context)
                                   .textTheme
                                   .labelMedium
