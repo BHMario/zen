@@ -44,7 +44,7 @@ module.exports = (pool) => {
         start_date === undefined ? null : start_date,
         end_date === undefined ? null : end_date,
         status || 'active',
-        created_by === undefined ? null : created_by
+        created_by || user_id // Usar user_id como default si created_by no se proporciona
       ];
 
       console.log('📝 Creando proyecto con parámetros:', params);
