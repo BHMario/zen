@@ -59,7 +59,7 @@ module.exports = (pool) => {
         project_id === undefined ? null : project_id,
         color === undefined ? null : color,
         labels ? JSON.stringify(labels) : null,
-        created_by === undefined ? null : created_by
+        created_by || user_id // Usar user_id como default si created_by no se proporciona
       ];
 
       console.log('📝 Creando tarea con parámetros:', params);

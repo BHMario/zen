@@ -43,7 +43,7 @@ module.exports = (pool) => {
         frequency === undefined ? null : frequency,
         days_of_week ? JSON.stringify(days_of_week) : null,
         color === undefined ? null : color,
-        created_by === undefined ? null : created_by
+        created_by || user_id // Usar user_id como default si created_by no se proporciona
       ];
 
       console.log('📝 Creando rutina con parámetros:', params);

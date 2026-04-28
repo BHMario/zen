@@ -45,7 +45,7 @@ module.exports = (pool) => {
         progress || 0,
         status || 'pending',
         color === undefined ? null : color,
-        created_by === undefined ? null : created_by
+        created_by || user_id // Usar user_id como default si created_by no se proporciona
       ];
 
       console.log('📝 Creando objetivo con parámetros:', params);

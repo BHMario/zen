@@ -202,6 +202,26 @@ class ProjectProvider extends ChangeNotifier {
     return _projects.where((p) => p.status == ProjectStatus.completed).toList();
   }
 
+  // Obtener proyectos por fecha (para calendario)
+  List<Project> getProjectsByDate(DateTime date) {
+    return _projects
+        .where((project) {
+          final isAfterStart = project.startDate.isBefore(date) || 
+              (project.startDate.year == date.year &&
+               project.startDate.month == date.month &&
+               project.startDate.day == date.day);
+          
+          final isBeforeEnd = project.endDate == null ||
+              project.endDate!.isAfter(date) ||
+              (project.endDate!.year == date.year &&
+               project.endDate!.month == date.month &&
+               project.endDate!.day == date.day);
+          
+          return isAfterStart && isBeforeEnd;
+        })
+        .toList();
+  }
+
   // Parsear estado de proyecto
   ProjectStatus _parseProjectStatus(String status) {
     switch (status.toLowerCase()) {

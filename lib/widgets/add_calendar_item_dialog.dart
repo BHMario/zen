@@ -177,11 +177,58 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   }
 
   Future<void> _addRoutine() async {
-    // TODO: Implementar rutinas
+    final authProvider = context.read<AuthProvider>();
+    final userId = authProvider.currentUser?.id;
+    
+    if (userId == null) {
+      throw Exception('Usuario no autenticado');
+    }
+
+    await context.read<RoutineProvider>().addRoutine(
+      name: _titleController.text,
+      description: _descriptionController.text,
+      frequency: Frequency.daily,
+      color: _selectedColor,
+      userId: userId,
+    );
+
+    if (_setReminder && _reminderDateTime != null) {
+      await context.read<ReminderProvider>().addReminder(
+        itemId: '',
+        type: ReminderType.routine,
+        dateTime: _reminderDateTime!,
+        message: _titleController.text,
+      );
+    }
   }
 
   Future<void> _addGoal() async {
-    // TODO: Implementar objetivos
+    final authProvider = context.read<AuthProvider>();
+    final userId = authProvider.currentUser?.id;
+    
+    if (userId == null) {
+      throw Exception('Usuario no autenticado');
+    }
+
+    await context.read<GoalProvider>().addGoal(
+      title: _titleController.text,
+      description: _descriptionController.text,
+      category: GoalCategory.other,
+      timeframe: GoalTimeframe.mediumTerm,
+      startDate: widget.selectedDate,
+      targetDate: _dueDate ?? widget.selectedDate.add(const Duration(days: 30)),
+      color: _selectedColor,
+      userId: userId,
+    );
+
+    if (_setReminder && _reminderDateTime != null) {
+      await context.read<ReminderProvider>().addReminder(
+        itemId: '',
+        type: ReminderType.goal,
+        dateTime: _reminderDateTime!,
+        message: _titleController.text,
+      );
+    }
   }
 
   @override
