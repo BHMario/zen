@@ -522,7 +522,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (item is Task) {
       return item.title;
     } else if (item is Project) {
-      return item.name;
+      return item.getDateLabel(_selectedDate);
     } else if (item is Routine) {
       return item.name;
     } else if (item is Goal) {
