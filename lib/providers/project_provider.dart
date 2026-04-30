@@ -25,21 +25,28 @@ class ProjectProvider extends ChangeNotifier {
       final projectList = await ApiService.getProjects(userId: userId);
       
       _projects = projectList.map((projectData) {
+        // Convertir fechas YYYY-MM-DD a DateTime a las 00:00:00 local
+        DateTime? parseDate(String? dateStr) {
+          if (dateStr == null) return null;
+          try {
+            final parts = dateStr.split('T')[0].split('-');
+            return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+          } catch (e) {
+            return null;
+          }
+        }
+
         return Project(
           id: projectData['id'] as String,
           name: projectData['name'] as String,
           description: projectData['description'] as String?,
           color: projectData['color'] as String? ?? '#3B82F6',
           status: _parseProjectStatus(projectData['status'] as String? ?? 'active'),
-          startDate: projectData['start_date'] != null
-              ? DateTime.parse(projectData['start_date'] as String).toLocal()
-              : DateTime.now(),
-          endDate: projectData['end_date'] != null 
-              ? DateTime.parse(projectData['end_date'] as String).toLocal()
-              : null,
+          startDate: parseDate(projectData['start_date'] as String?) ?? DateTime.now(),
+          endDate: parseDate(projectData['end_date'] as String?),
           createdBy: userId,
-          createdAt: DateTime.parse(projectData['created_at'] as String).toLocal(),
-          updatedAt: DateTime.parse(projectData['updated_at'] as String).toLocal(),
+          createdAt: DateTime.parse(projectData['created_at'] as String),
+          updatedAt: DateTime.parse(projectData['updated_at'] as String),
         );
       }).toList();
       debugPrint('✅ ${_projects.length} proyectos cargados desde API');
@@ -59,14 +66,14 @@ class ProjectProvider extends ChangeNotifier {
       }
 
       // Guardar en MySQL a través de API
-      // Convertir a UTC para garantizar consistencia entre zonas horarias
+      // Enviar SOLO la fecha en formato YYYY-MM-DD, sin horas
       final result = await ApiService.createProject(
         userId: _currentUserId!,
         name: project.name,
         description: project.description,
         color: project.color,
-        startDate: project.startDate.toUtc().toIso8601String(),
-        endDate: project.endDate?.toUtc().toIso8601String(),
+        startDate: project.startDate.toString().split(' ')[0],
+        endDate: project.endDate != null ? project.endDate!.toString().split(' ')[0] : null,
         status: project.status.toString().split('.').last,
         createdBy: project.createdBy,
       );
@@ -105,13 +112,19 @@ class ProjectProvider extends ChangeNotifier {
       throw Exception('Usuario no autenticado. Por favor inicia sesión.');
     }
 
+    // Normalizar fechas: establecer hora a 00:00:00 para evitar problemas de zona horaria
+    final normalizedStartDate = DateTime(startDate.year, startDate.month, startDate.day);
+    final normalizedEndDate = endDate != null 
+      ? DateTime(endDate.year, endDate.month, endDate.day)
+      : null;
+
     final project = Project(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
       description: description,
       color: color,
-      startDate: startDate,
-      endDate: endDate,
+      startDate: normalizedStartDate,
+      endDate: normalizedEndDate,
       createdBy: actualUserId,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
@@ -131,7 +144,7 @@ class ProjectProvider extends ChangeNotifier {
       }
 
       // Actualizar en MySQL a través de API
-      // Convertir a UTC para garantizar consistencia entre zonas horarias
+      // Enviar SOLO la fecha en formato YYYY-MM-DD, sin horas
       final result = await ApiService.updateProject(
         projectId: project.id,
         updates: {
@@ -139,8 +152,8 @@ class ProjectProvider extends ChangeNotifier {
           'description': project.description,
           'color': project.color,
           'status': project.status.toString().split('.').last,
-          'start_date': project.startDate.toUtc().toIso8601String(),
-          'end_date': project.endDate?.toUtc().toIso8601String(),
+          'start_date': project.startDate.toString().split(' ')[0],
+          'end_date': project.endDate != null ? project.endDate!.toString().split(' ')[0] : null,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         },
       );
@@ -204,20 +217,26 @@ class ProjectProvider extends ChangeNotifier {
 
   // Obtener proyectos por fecha (para calendario)
   List<Project> getProjectsByDate(DateTime date) {
+    // Convertir fecha local a UTC para comparación consistente (igual que tareas)
+    final dateUtc = date.toUtc();
+    // Obtener medianoche UTC de ese día
+    final normalizedDate = DateTime.utc(dateUtc.year, dateUtc.month, dateUtc.day);
+    
     return _projects
         .where((project) {
-          final isAfterStart = project.startDate.isBefore(date) || 
-              (project.startDate.year == date.year &&
-               project.startDate.month == date.month &&
-               project.startDate.day == date.day);
+          final startDateUtc = project.startDate.toUtc();
+          final startMatches = startDateUtc.year == normalizedDate.year &&
+              startDateUtc.month == normalizedDate.month &&
+              startDateUtc.day == normalizedDate.day;
           
-          final isBeforeEnd = project.endDate == null ||
-              project.endDate!.isAfter(date) ||
-              (project.endDate!.year == date.year &&
-               project.endDate!.month == date.month &&
-               project.endDate!.day == date.day);
+          final endDateUtc = project.endDate?.toUtc();
+          final endMatches = endDateUtc != null &&
+              endDateUtc.year == normalizedDate.year &&
+              endDateUtc.month == normalizedDate.month &&
+              endDateUtc.day == normalizedDate.day;
           
-          return isAfterStart && isBeforeEnd;
+          // Mostrar el proyecto si coincide con fecha de inicio O fecha de fin
+          return startMatches || endMatches;
         })
         .toList();
   }

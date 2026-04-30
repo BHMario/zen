@@ -70,15 +70,17 @@ const initializeDatabase = async () => {
         name VARCHAR(255) NOT NULL,
         description TEXT,
         color VARCHAR(7) DEFAULT '#3B82F6',
-        start_date DATE,
-        end_date DATE,
+        start_date DATETIME,
+        end_date DATETIME,
         status VARCHAR(50) DEFAULT 'active',
         created_by VARCHAR(36) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
-        INDEX idx_user_id (user_id)
+        INDEX idx_user_id (user_id),
+        INDEX idx_start_date (start_date),
+        INDEX idx_end_date (end_date)
       );
     `);
     console.log('✅ Tabla projects creada');

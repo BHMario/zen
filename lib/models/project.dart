@@ -105,6 +105,36 @@ class Project {
     );
   }
 
+  // Obtener etiqueta de fecha para mostrar en calendario
+  String getDateLabel(DateTime date) {
+    // Normalizar la fecha a medianoche UTC para comparación
+    final dateUtc = date.toUtc();
+    final normalizedDate = DateTime.utc(dateUtc.year, dateUtc.month, dateUtc.day);
+    
+    final startDateUtc = startDate.toUtc();
+    final startNormalized = DateTime.utc(startDateUtc.year, startDateUtc.month, startDateUtc.day);
+    
+    final isStart = startNormalized == normalizedDate;
+    
+    if (endDate != null) {
+      final endDateUtc = endDate!.toUtc();
+      final endNormalized = DateTime.utc(endDateUtc.year, endDateUtc.month, endDateUtc.day);
+      final isEnd = endNormalized == normalizedDate;
+      
+      if (isStart && isEnd) {
+        return '▶ $name (Inicio y Fin)';
+      } else if (isStart) {
+        return '▶ $name (Inicio)';
+      } else if (isEnd) {
+        return '■ $name (Fin)';
+      }
+    } else if (isStart) {
+      return '▶ $name';
+    }
+    
+    return name;
+  }
+
   int get completedTasksCount => 0; // Se calculará con el contexto de tareas
   int get totalTasksCount => taskIds.length;
   double get completionPercentage => totalTasksCount == 0 ? 0 : (completedTasksCount / totalTasksCount) * 100;

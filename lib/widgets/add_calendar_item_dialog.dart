@@ -22,6 +22,8 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   DateTime? _dueDate;
+  DateTime? _projectStartDate;
+  DateTime? _projectEndDate;
   TaskPriority _priority = TaskPriority.medium;
   String _selectedColor = '#6366F1';
   List<String> _selectedLabels = [];
@@ -43,8 +45,11 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     super.initState();
     _titleController = TextEditingController();
     _descriptionController = TextEditingController();
-    _dueDate = widget.selectedDate;
-    _reminderDateTime = widget.selectedDate;
+    // Normalizar todas las fechas iniciales para evitar problemas de zona horaria
+    _dueDate = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
+    _projectStartDate = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
+    _projectEndDate = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
+    _reminderDateTime = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
   }
 
   @override
@@ -162,9 +167,13 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
       name: _titleController.text,
       description: _descriptionController.text,
       color: _selectedColor,
-      startDate: widget.selectedDate,
+      startDate: _projectStartDate ?? widget.selectedDate,
+      endDate: _projectEndDate,
       userId: userId,
     );
+
+    // Recargar proyectos desde la API para asegurar sincronización
+    await context.read<ProjectProvider>().loadUserProjects(userId);
 
     if (_setReminder && _reminderDateTime != null) {
       await context.read<ReminderProvider>().addReminder(
@@ -285,40 +294,136 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
               ),
               const SizedBox(height: 16),
               
-              // Fecha
-              GestureDetector(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: _dueDate ?? widget.selectedDate,
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime.now().add(const Duration(days: 365)),
-                  );
-                  if (picked != null) {
-                    setState(() => _dueDate = picked);
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: ZenTheme.dividerColor,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: ZenTheme.borderColor),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.calendar_today_outlined),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          DateFormat('dd/MM/yyyy').format(_dueDate ?? widget.selectedDate),
+              // Fecha (varía según el tipo)
+              if (_selectedType != 'project') ...[
+                GestureDetector(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _dueDate ?? widget.selectedDate,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setState(() => _dueDate = picked);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: ZenTheme.dividerColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: ZenTheme.borderColor),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_today_outlined),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            DateFormat('dd/MM/yyyy').format(_dueDate ?? widget.selectedDate),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ],
+
+              // Fechas de proyecto (solo para proyectos)
+              if (_selectedType == 'project') ...[
+                // Fecha de inicio
+                GestureDetector(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _projectStartDate ?? DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day),
+                      firstDate: DateTime(DateTime.now().year - 1),
+                      lastDate: DateTime.now().add(const Duration(days: 730)),
+                    );
+                    if (picked != null) {
+                      // Normalizar la fecha seleccionada para evitar problemas de zona horaria
+                      setState(() => _projectStartDate = DateTime(picked.year, picked.month, picked.day));
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: ZenTheme.dividerColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: ZenTheme.borderColor),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_today_outlined),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Fecha de inicio del proyecto',
+                                style: Theme.of(context).textTheme.labelSmall,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                DateFormat('dd/MM/yyyy').format(_projectStartDate ?? DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Fecha de fin
+                GestureDetector(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _projectEndDate ?? (_projectStartDate ?? DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day)),
+                      firstDate: _projectStartDate ?? DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day),
+                      lastDate: DateTime.now().add(const Duration(days: 730)),
+                    );
+                    if (picked != null) {
+                      // Normalizar la fecha seleccionada para evitar problemas de zona horaria
+                      setState(() => _projectEndDate = DateTime(picked.year, picked.month, picked.day));
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: ZenTheme.dividerColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: ZenTheme.borderColor),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_today_outlined),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Fecha de fin del proyecto',
+                                style: Theme.of(context).textTheme.labelSmall,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                DateFormat('dd/MM/yyyy').format(_projectEndDate ?? (_projectStartDate ?? DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day))),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               
               // Prioridad (solo para tareas)
               if (_selectedType == 'task') ...[
