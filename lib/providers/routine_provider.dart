@@ -81,6 +81,9 @@ class RoutineProvider extends ChangeNotifier {
         'frequency': routine.frequency.toString().split('.').last,
         'days_of_week': routine.daysOfWeek.map((e) => e.toString().split('.').last).toList(),
         'color': routine.color,
+        'is_active': routine.isActive,
+        'schedule_time': routine.scheduleTime,
+        'duration_minutes': routine.durationMinutes,
         'created_by': routine.createdBy,
       });
 
@@ -138,8 +141,22 @@ class RoutineProvider extends ChangeNotifier {
 
   // Obtener rutinas por fecha (para calendario)
   List<Routine> getRoutinesByDate(DateTime date) {
+    // Para rutinas que se repiten en ciertos días de la semana,
+    // mostrar si ese día de la semana está en la lista
+    final dayOfWeek = DayOfWeek.values[date.weekday - 1]; // Monday=1 en DateTime, Monday=0 en enum
+    
     return _routines
-        .where((routine) => routine.isActive)
+        .where((routine) {
+          if (!routine.isActive) return false;
+          
+          // Si no hay días específicos, mostrar todos los días (daily)
+          if (routine.daysOfWeek.isEmpty) {
+            return routine.frequency == Frequency.daily;
+          }
+          
+          // Si hay días específicos, mostrar si este día está en la lista
+          return routine.daysOfWeek.contains(dayOfWeek);
+        })
         .toList();
   }
 

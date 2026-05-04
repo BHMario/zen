@@ -45,29 +45,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-      body: MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => ReminderProvider()),
-          ChangeNotifierProvider(create: (_) => RoutineProvider()),
-          ChangeNotifierProvider(create: (_) => GoalProvider()),
-        ],
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Selector de mes
-              _buildMonthSelector(context),
-              const Divider(),
-              // Filtros
-              _buildFilterBar(context),
-              const SizedBox(height: 12),
-              // Calendario
-              _buildCalendarGrid(context),
-              const SizedBox(height: 24),
-              // Items del día seleccionado
-              _buildSelectedDayItems(context),
-              const SizedBox(height: 24),
-            ],
-          ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Selector de mes
+            _buildMonthSelector(context),
+            const Divider(),
+            // Filtros
+            _buildFilterBar(context),
+            const SizedBox(height: 12),
+            // Calendario
+            _buildCalendarGrid(context),
+            const SizedBox(height: 24),
+            // Items del día seleccionado
+            _buildSelectedDayItems(context),
+            const SizedBox(height: 24),
+          ],
         ),
       ),
     );
