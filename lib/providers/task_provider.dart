@@ -87,12 +87,15 @@ class TaskProvider extends ChangeNotifier {
   }
 
   // Obtener tareas por fecha
-  List<Task> getTasksByDate(DateTime date) {
+  List<Task> getTasksByDate(DateTime date, {bool includeProjectTasks = true}) {
     // Comparar fechas solo, sin considerar zona horaria
     // Normalizar la fecha a medianoche local para comparación
     final normalizedDate = DateTime(date.year, date.month, date.day);
     
     return _tasks.where((task) {
+      // Si no queremos incluir tareas de proyectos y esta tarea tiene proyecto, saltar
+      if (!includeProjectTasks && task.projectId != null) return false;
+
       // Normalizar fecha de la tarea también
       final taskDate = DateTime(task.dueDate.year, task.dueDate.month, task.dueDate.day);
       return taskDate == normalizedDate;

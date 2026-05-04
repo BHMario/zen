@@ -464,7 +464,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final items = <dynamic>[];
 
     if (_filterType == 'all' || _filterType == 'tasks') {
-      items.addAll(taskProvider.getTasksByDate(date));
+      items.addAll(taskProvider.getTasksByDate(date, includeProjectTasks: false));
     }
 
     if (_filterType == 'all' || _filterType == 'projects') {
