@@ -6,11 +6,15 @@ import 'package:zen/providers/providers.dart';
 import 'package:zen/theme/zen_theme.dart';
 
 class AddCalendarItemDialog extends StatefulWidget {
+  final String? initialType;
+  final String? initialProjectId;
   final DateTime selectedDate;
 
   const AddCalendarItemDialog({
     super.key,
     required this.selectedDate,
+    this.initialType,
+    this.initialProjectId,
   });
 
   @override
@@ -19,6 +23,7 @@ class AddCalendarItemDialog extends StatefulWidget {
 
 class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   String _selectedType = 'task'; // task, project, routine, goal
+  String? _selectedProjectId;
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   DateTime? _dueDate;
@@ -43,6 +48,8 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   @override
   void initState() {
     super.initState();
+    _selectedType = widget.initialType ?? 'task';
+    _selectedProjectId = widget.initialProjectId;
     _titleController = TextEditingController();
     _descriptionController = TextEditingController();
     // Normalizar todas las fechas iniciales para evitar problemas de zona horaria
@@ -142,6 +149,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
       priority: _priority,
       color: _selectedColor,
       labels: _selectedLabels,
+      projectId: _selectedProjectId,
       userId: userId,
     );
 
@@ -445,6 +453,30 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                   },
                 ),
                 const SizedBox(height: 16),
+                // Proyecto (opcional)
+                Consumer<ProjectProvider>(
+                  builder: (context, projectProvider, child) {
+                    final projects = projectProvider.projects;
+                    return DropdownButtonFormField<String>(
+                      value: _selectedProjectId,
+                      decoration: const InputDecoration(
+                        hintText: 'Selecciona proyecto (opcional)',
+                        labelText: 'Proyecto',
+                        prefixIcon: Icon(Icons.folder_outlined),
+                      ),
+                      items: [
+                        const DropdownMenuItem(value: null, child: Text('Ninguno')),
+                        ...projects.map((p) => DropdownMenuItem(
+                          value: p.id,
+                          child: Text(p.name),
+                        )),
+                      ],
+                      onChanged: (value) {
+                        setState(() => _selectedProjectId = value);
+                      },
+                    );
+                  },
+                ),
               ],
               
               // Color

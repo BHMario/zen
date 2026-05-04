@@ -1,3 +1,5 @@
+import 'task.dart';
+
 enum ProjectStatus { planning, active, onHold, completed }
 
 class Project {
@@ -131,7 +133,20 @@ class Project {
     return name;
   }
 
-  int get completedTasksCount => 0; // Se calculará con el contexto de tareas
-  int get totalTasksCount => taskIds.length;
-  double get completionPercentage => totalTasksCount == 0 ? 0 : (completedTasksCount / totalTasksCount) * 100;
+  // Estos getters ahora aceptan la lista de tareas para calcular dinámicamente
+  int getCompletedTasksCount(List<Task> allTasks) {
+    // Filtrar tareas que pertenecen a este proyecto y están completadas
+    return allTasks.where((t) => t.projectId == id && t.status == TaskStatus.completed).length;
+  }
+
+  int getTotalTasksCount(List<Task> allTasks) {
+    return allTasks.where((t) => t.projectId == id).length;
+  }
+
+  double calculateCompletionPercentage(List<Task> allTasks) {
+    final total = getTotalTasksCount(allTasks);
+    if (total == 0) return 0;
+    final completedCount = getCompletedTasksCount(allTasks);
+    return (completedCount / total) * 100;
+  }
 }

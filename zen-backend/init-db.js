@@ -56,8 +56,10 @@ const initializeDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
         INDEX idx_user_id (user_id),
-        INDEX idx_due_date (due_date)
+        INDEX idx_due_date (due_date),
+        INDEX idx_project_id (project_id)
       );
     `);
     console.log('✅ Tabla tasks creada');
