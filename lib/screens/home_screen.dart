@@ -54,6 +54,8 @@ class _HomeScreenState extends State<HomeScreen> {
         authProvider: authProvider,
         taskProvider: context.read<TaskProvider>(),
         projectProvider: context.read<ProjectProvider>(),
+        routineProvider: context.read<RoutineProvider>(),
+        goalProvider: context.read<GoalProvider>(),
         reminderProvider: context.read<ReminderProvider>(),
         analyticsProvider: context.read<AnalyticsProvider>(),
       );

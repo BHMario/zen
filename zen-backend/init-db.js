@@ -36,14 +36,14 @@ const initializeDatabase = async () => {
     `);
     console.log('✅ Tabla users creada');
 
-    // Tabla de tareas
+    // Tabla de tareas (due_date como DATE para consistencia)
     await connection.query(`
       CREATE TABLE IF NOT EXISTS tasks (
         id VARCHAR(36) PRIMARY KEY,
         user_id VARCHAR(36) NOT NULL,
         title VARCHAR(255) NOT NULL,
         description TEXT,
-        due_date DATETIME,
+        due_date DATE,
         status VARCHAR(50) DEFAULT 'pending',
         priority VARCHAR(50) DEFAULT 'medium',
         project_id VARCHAR(36),
@@ -62,7 +62,7 @@ const initializeDatabase = async () => {
     `);
     console.log('✅ Tabla tasks creada');
 
-    // Tabla de proyectos
+    // Tabla de proyectos (fechas como DATE, no DATETIME - para evitar problemas de zona horaria)
     await connection.query(`
       CREATE TABLE IF NOT EXISTS projects (
         id VARCHAR(36) PRIMARY KEY,
@@ -70,8 +70,8 @@ const initializeDatabase = async () => {
         name VARCHAR(255) NOT NULL,
         description TEXT,
         color VARCHAR(7) DEFAULT '#3B82F6',
-        start_date DATETIME,
-        end_date DATETIME,
+        start_date DATE,
+        end_date DATE,
         status VARCHAR(50) DEFAULT 'active',
         created_by VARCHAR(36) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -115,6 +115,9 @@ const initializeDatabase = async () => {
         frequency VARCHAR(50) NOT NULL,
         days_of_week VARCHAR(255),
         color VARCHAR(7) DEFAULT '#10B981',
+        is_active BOOLEAN DEFAULT TRUE,
+        schedule_time VARCHAR(5),
+        duration_minutes INT,
         created_by VARCHAR(36) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -130,16 +133,22 @@ const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS goals (
         id VARCHAR(36) PRIMARY KEY,
         user_id VARCHAR(36) NOT NULL,
-        title VARCHAR(255) NOT NULL,
-        description TEXT,
-        category VARCHAR(100),
+        start_date DATE,
         target_date DATE,
-        progress INT DEFAULT 0,
-        status VARCHAR(50) DEFAULT 'active',
+        target_value DECIMAL(10,2) DEFAULT 1.0,
+        current_value DECIMAL(10,2) DEFAULT 0.0,
+        unit VARCHAR(50) DEFAULT 'unidades',
+        timeframe VARCHAR(50) DEFAULT 'mediumTerm',
+        is_completed BOOLEAN DEFAULT FALSE,
         color VARCHAR(7) DEFAULT '#F59E0B',
         created_by VARCHAR(36) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_user_id (user_id),
+        INDEX idx_start_date (start_date),
+        INDEX idx_target_date (target_dateLT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
         INDEX idx_user_id (user_id)

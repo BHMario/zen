@@ -25,24 +25,37 @@ class GoalProvider extends ChangeNotifier {
       final goalList = await ApiService.getGoals(userId: userId);
 
       _goals = goalList.map((goalData) {
+        // Parsear fechas YYYY-MM-DD sin conversión de zona horaria
+        DateTime? parseDate(String? dateStr) {
+          if (dateStr == null) return null;
+          try {
+            // Extraer solo la parte de la fecha (YYYY-MM-DD) para evitar desfases horarios
+            final datePart = dateStr.contains('T') ? dateStr.split('T')[0] : dateStr.split(' ')[0];
+            final parts = datePart.split('-');
+            final year = int.parse(parts[0]);
+            final month = int.parse(parts[1]);
+            final day = int.parse(parts[2]);
+            return DateTime(year, month, day);
+          } catch (e) {
+            debugPrint('❌ Error parsing goal date: $e');
+            return null;
+          }
+        }
+
         return Goal(
           id: goalData['id'] as String,
           title: goalData['title'] as String,
           description: goalData['description'] as String?,
           category: _parseGoalCategory(goalData['category'] as String? ?? 'other'),
           timeframe: _parseGoalTimeframe(goalData['timeframe'] as String? ?? 'mediumTerm'),
-          startDate: goalData['start_date'] != null
-              ? DateTime.parse(goalData['start_date'] as String).toLocal()
-              : DateTime.now(),
-          targetDate: goalData['target_date'] != null
-              ? DateTime.parse(goalData['target_date'] as String).toLocal()
-              : DateTime.now().add(const Duration(days: 365)),
+          startDate: parseDate(goalData['start_date'] as String?) ?? DateTime.now(),
+          targetDate: parseDate(goalData['target_date'] as String?) ?? DateTime.now().add(const Duration(days: 365)),
           targetValue: (goalData['target_value'] as num?)?.toDouble() ?? 1.0,
           currentValue: (goalData['current_value'] as num?)?.toDouble() ?? 0.0,
           unit: goalData['unit'] as String? ?? 'unidades',
           createdBy: userId,
-          createdAt: DateTime.parse(goalData['created_at'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
-          updatedAt: DateTime.parse(goalData['updated_at'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
+          createdAt: DateTime.parse(goalData['created_at'] as String? ?? DateTime.now().toIso8601String()),
+          updatedAt: DateTime.parse(goalData['updated_at'] as String? ?? DateTime.now().toIso8601String()),
           isCompleted: goalData['is_completed'] as bool? ?? false,
           color: goalData['color'] as String? ?? '#ec4899',
         );
@@ -63,16 +76,22 @@ class GoalProvider extends ChangeNotifier {
         throw Exception('Usuario no autenticado');
       }
 
+      // Convertir fechas al formato YYYY-MM-DD (sin tiempo)
+      final startDateString = '${goal.startDate.year.toString().padLeft(4, '0')}-${goal.startDate.month.toString().padLeft(2, '0')}-${goal.startDate.day.toString().padLeft(2, '0')}';
+      final targetDateString = '${goal.targetDate.year.toString().padLeft(4, '0')}-${goal.targetDate.month.toString().padLeft(2, '0')}-${goal.targetDate.day.toString().padLeft(2, '0')}';
+
       final result = await ApiService.createGoal({
         'user_id': _currentUserId!,
         'title': goal.title,
         'description': goal.description,
         'category': goal.category.toString().split('.').last,
-        'start_date': goal.startDate.toUtc().toIso8601String(),
-        'target_date': goal.targetDate.toUtc().toIso8601String(),
+        'start_date': startDateString,
+        'target_date': targetDateString,
         'target_value': goal.targetValue,
         'current_value': goal.currentValue,
         'unit': goal.unit,
+        'timeframe': goal.timeframe.toString().split('.').last,
+        'is_completed': goal.isCompleted,
         'color': goal.color,
         'created_by': goal.createdBy,
       });
@@ -133,9 +152,22 @@ class GoalProvider extends ChangeNotifier {
     await createGoal(goal);
   }
 
-  // Obtener objetivos por fecha (para calendario)
   List<Goal> getGoalsByDate(DateTime date) {
-    return _goals.where((goal) => !goal.isCompleted).toList();
+    // Normalizar la fecha a medianoche local
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+
+    // Mostrar un objetivo SOLO si es el día de inicio o el día objetivo
+    return _goals.where((goal) {
+      if (goal.isCompleted) return false;
+      
+      final startDate = DateTime(goal.startDate.year, goal.startDate.month, goal.startDate.day);
+      final targetDate = DateTime(goal.targetDate.year, goal.targetDate.month, goal.targetDate.day);
+
+      final isStart = normalizedDate.isAtSameMomentAs(startDate);
+      final isEnd = normalizedDate.isAtSameMomentAs(targetDate);
+
+      return isStart || isEnd;
+    }).toList();
   }
 
   // Obtener objetivos activos

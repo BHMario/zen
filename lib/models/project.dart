@@ -107,18 +107,14 @@ class Project {
 
   // Obtener etiqueta de fecha para mostrar en calendario
   String getDateLabel(DateTime date) {
-    // Normalizar la fecha a medianoche UTC para comparación
-    final dateUtc = date.toUtc();
-    final normalizedDate = DateTime.utc(dateUtc.year, dateUtc.month, dateUtc.day);
-    
-    final startDateUtc = startDate.toUtc();
-    final startNormalized = DateTime.utc(startDateUtc.year, startDateUtc.month, startDateUtc.day);
+    // Normalizar la fecha a medianoche local para comparación
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final startNormalized = DateTime(startDate.year, startDate.month, startDate.day);
     
     final isStart = startNormalized == normalizedDate;
     
     if (endDate != null) {
-      final endDateUtc = endDate!.toUtc();
-      final endNormalized = DateTime.utc(endDateUtc.year, endDateUtc.month, endDateUtc.day);
+      final endNormalized = DateTime(endDate!.year, endDate!.month, endDate!.day);
       final isEnd = endNormalized == normalizedDate;
       
       if (isStart && isEnd) {
