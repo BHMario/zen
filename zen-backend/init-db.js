@@ -36,6 +36,30 @@ const initializeDatabase = async () => {
     `);
     console.log('✅ Tabla users creada');
 
+    // Tabla de proyectos (fechas como DATE, no DATETIME - para evitar problemas de zona horaria)
+    // Debe crearse ANTES de tasks porque tasks la referencia
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS projects (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        color VARCHAR(7) DEFAULT '#3B82F6',
+        start_date DATE,
+        end_date DATE,
+        status VARCHAR(50) DEFAULT 'active',
+        created_by VARCHAR(36) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_user_id (user_id),
+        INDEX idx_start_date (start_date),
+        INDEX idx_end_date (end_date)
+      );
+    `);
+    console.log('✅ Tabla projects creada');
+
     // Tabla de tareas (due_date como DATE para consistencia)
     await connection.query(`
       CREATE TABLE IF NOT EXISTS tasks (
@@ -63,29 +87,6 @@ const initializeDatabase = async () => {
       );
     `);
     console.log('✅ Tabla tasks creada');
-
-    // Tabla de proyectos (fechas como DATE, no DATETIME - para evitar problemas de zona horaria)
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS projects (
-        id VARCHAR(36) PRIMARY KEY,
-        user_id VARCHAR(36) NOT NULL,
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        color VARCHAR(7) DEFAULT '#3B82F6',
-        start_date DATE,
-        end_date DATE,
-        status VARCHAR(50) DEFAULT 'active',
-        created_by VARCHAR(36) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
-        INDEX idx_user_id (user_id),
-        INDEX idx_start_date (start_date),
-        INDEX idx_end_date (end_date)
-      );
-    `);
-    console.log('✅ Tabla projects creada');
 
     // Tabla de recordatorios
     await connection.query(`
@@ -150,10 +151,7 @@ const initializeDatabase = async () => {
         FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
         INDEX idx_user_id (user_id),
         INDEX idx_start_date (start_date),
-        INDEX idx_target_date (target_dateLT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
-        INDEX idx_user_id (user_id)
+        INDEX idx_target_date (target_date)
       );
     `);
     console.log('✅ Tabla goals creada');

@@ -1,4 +1,8 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:zen/providers/providers.dart';
 import 'package:zen/theme/zen_theme.dart';
@@ -13,6 +17,71 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late Future<Map<String, dynamic>?> _userDetailsFuture;
+  bool _isUploadingImage = false;
+
+  Future<void> _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: source, imageQuality: 85, maxWidth: 512);
+    if (picked == null) return;
+
+    setState(() => _isUploadingImage = true);
+    try {
+      // Copiar imagen al directorio privado de la app para que persista
+      final appDir = await getApplicationDocumentsDirectory();
+      final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final savedImage = await File(picked.path).copy('${appDir.path}/$fileName');
+
+      if (mounted) {
+        await context.read<AuthProvider>().updateProfileImage(savedImage.path);
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingImage = false);
+    }
+  }
+
+  void _showImageOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: ZenTheme.borderColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Seleccionar de galería'),
+              onTap: () { Navigator.pop(context); _pickImage(ImageSource.gallery); },
+            ),
+            // La cámara solo está disponible en Android/iOS
+            if (!kIsWeb && (Platform.isAndroid || Platform.isIOS))
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined),
+                title: const Text('Tomar foto'),
+                onTap: () { Navigator.pop(context); _pickImage(ImageSource.camera); },
+              ),
+            if (context.read<AuthProvider>().currentUser?.profileImageUrl != null)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Eliminar foto', style: TextStyle(color: Colors.red)),
+                onTap: () { Navigator.pop(context); context.read<AuthProvider>().removeProfileImage(); },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -62,18 +131,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundColor: Colors.white,
-                            child: Text(
-                              user.name.isNotEmpty
-                                  ? user.name[0].toUpperCase()
-                                  : 'U',
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w700,
-                                color: ZenTheme.primaryColor,
-                              ),
+                          GestureDetector(
+                            onTap: () => _showImageOptions(context),
+                            child: Stack(
+                              alignment: Alignment.bottomRight,
+                              children: [
+                                CircleAvatar(
+                                  radius: 50,
+                                  backgroundColor: Colors.white,
+                                  child: _isUploadingImage
+                                      ? const SizedBox(
+                                          width: 32, height: 32,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : user.profileImageUrl != null && File(user.profileImageUrl!).existsSync()
+                                          ? ClipOval(
+                                              child: Image.file(
+                                                File(user.profileImageUrl!),
+                                                width: 100, height: 100,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            )
+                                          : Text(
+                                              user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+                                              style: const TextStyle(
+                                                fontSize: 32,
+                                                fontWeight: FontWeight.w700,
+                                                color: ZenTheme.primaryColor,
+                                              ),
+                                            ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt,
+                                    size: 16,
+                                    color: ZenTheme.primaryColor,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 16),
