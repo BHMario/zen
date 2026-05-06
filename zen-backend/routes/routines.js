@@ -24,7 +24,7 @@ module.exports = (pool) => {
   // Crear rutina
   router.post('/', async (req, res) => {
     try {
-      const { user_id, title, description, frequency, days_of_week, color, created_by } = req.body;
+      const { user_id, title, description, frequency, days_of_week, color, created_by, repeat_every_days } = req.body;
       if (!user_id || !title) {
         return res.status(400).json({ error: 'user_id y title son requeridos' });
       }
@@ -34,7 +34,6 @@ module.exports = (pool) => {
 
       const connection = await pool.getConnection();
 
-      // Convert undefined values to null
       const params = [
         routineId,
         user_id,
@@ -43,14 +42,15 @@ module.exports = (pool) => {
         frequency === undefined ? null : frequency,
         days_of_week ? JSON.stringify(days_of_week) : null,
         color === undefined ? null : color,
-        created_by || user_id // Usar user_id como default si created_by no se proporciona
+        created_by || user_id,
+        repeat_every_days !== undefined ? repeat_every_days : 1,
       ];
 
       console.log('📝 Creando rutina con parámetros:', params);
 
       await connection.execute(
-        `INSERT INTO routines (id, user_id, title, description, frequency, days_of_week, color, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO routines (id, user_id, title, description, frequency, days_of_week, color, created_by, repeat_every_days)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         params
       );
 

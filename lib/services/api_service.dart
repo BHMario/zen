@@ -527,6 +527,53 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> updateRoutine(String routineId, Map<String, dynamic> data) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.put(
+        Uri.parse('$baseUrl/routines/$routineId'),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ Rutina actualizada en servidor');
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
+        throw Exception('Sesión expirada');
+      } else {
+        return {'error': 'Error actualizando rutina'};
+      }
+    } catch (e) {
+      debugPrint('❌ Error actualizando rutina: $e');
+      return {'error': e.toString()};
+    }
+  }
+
+  static Future<bool> deleteRoutine(String routineId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.delete(
+        Uri.parse('$baseUrl/routines/$routineId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ Rutina eliminada del servidor');
+        return true;
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
+        throw Exception('Sesión expirada');
+      } else {
+        throw Exception('Error eliminando rutina');
+      }
+    } catch (e) {
+      debugPrint('❌ Error eliminando rutina: $e');
+      return false;
+    }
+  }
+
   // ==================== GOALS ====================
 
   static Future<List<Map<String, dynamic>>> getGoals({String? userId}) async {

@@ -116,6 +116,7 @@ const initializeDatabase = async () => {
         days_of_week VARCHAR(255),
         color VARCHAR(7) DEFAULT '#10B981',
         created_by VARCHAR(36) NOT NULL,
+        repeat_every_days INT DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -123,6 +124,12 @@ const initializeDatabase = async () => {
         INDEX idx_user_id (user_id)
       );
     `);
+    // Añadir columna repeat_every_days si no existe (para BDs existentes)
+    try {
+      await connection.query(`ALTER TABLE routines ADD COLUMN IF NOT EXISTS repeat_every_days INT DEFAULT 1;`);
+    } catch (e) {
+      // La columna ya existe o la sintaxis no es compatible, ignorar
+    }
     console.log('✅ Tabla routines creada');
 
     // Tabla de objetivos

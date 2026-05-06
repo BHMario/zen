@@ -4,3 +4,4 @@ export 'calendar_screen.dart';
 export 'analytics_screen.dart';
 export 'projects_screen.dart';
 export 'profile_screen.dart';
+export 'routines_screen.dart';

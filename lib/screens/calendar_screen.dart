@@ -45,13 +45,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-      body: MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => ReminderProvider()),
-          ChangeNotifierProvider(create: (_) => RoutineProvider()),
-          ChangeNotifierProvider(create: (_) => GoalProvider()),
-        ],
-        child: SingleChildScrollView(
+      body: SingleChildScrollView(
           child: Column(
             children: [
               // Selector de mes
@@ -68,7 +62,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
               const SizedBox(height: 24),
             ],
           ),
-        ),
       ),
     );
   }

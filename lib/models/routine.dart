@@ -16,6 +16,7 @@ class Routine {
   final String? scheduleTime; // Formato: "HH:mm" para rutinas con horario
   final int? durationMinutes;
   final List<String> labels;
+  final int repeatEveryDays; // Repetir cada N días (1 = diario, 7 = semanal, etc.)
 
   Routine({
     required this.id,
@@ -32,6 +33,7 @@ class Routine {
     this.scheduleTime,
     this.durationMinutes,
     this.labels = const [],
+    this.repeatEveryDays = 1,
   });
 
   Routine copyWith({
@@ -49,6 +51,7 @@ class Routine {
     String? scheduleTime,
     int? durationMinutes,
     List<String>? labels,
+    int? repeatEveryDays,
   }) {
     return Routine(
       id: id ?? this.id,
@@ -65,6 +68,7 @@ class Routine {
       scheduleTime: scheduleTime ?? this.scheduleTime,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       labels: labels ?? this.labels,
+      repeatEveryDays: repeatEveryDays ?? this.repeatEveryDays,
     );
   }
 
@@ -84,6 +88,7 @@ class Routine {
       'scheduleTime': scheduleTime,
       'durationMinutes': durationMinutes,
       'labels': labels,
+      'repeatEveryDays': repeatEveryDays,
     };
   }
 
@@ -105,6 +110,7 @@ class Routine {
       scheduleTime: map['scheduleTime'] as String?,
       durationMinutes: map['durationMinutes'] as int?,
       labels: List<String>.from(map['labels'] as List<dynamic>? ?? []),
+      repeatEveryDays: map['repeatEveryDays'] as int? ?? 1,
     );
   }
 }

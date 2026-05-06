@@ -56,6 +56,7 @@ class RoutineProvider extends ChangeNotifier {
           isActive: routineData['is_active'] as bool? ?? true,
           scheduleTime: routineData['schedule_time'] as String?,
           durationMinutes: routineData['duration_minutes'] as int?,
+          repeatEveryDays: routineData['repeat_every_days'] as int? ?? 1,
         );
       }).toList();
       debugPrint('✅ ${_routines.length} rutinas cargadas desde API');
@@ -82,6 +83,7 @@ class RoutineProvider extends ChangeNotifier {
         'days_of_week': routine.daysOfWeek.map((e) => e.toString().split('.').last).toList(),
         'color': routine.color,
         'created_by': routine.createdBy,
+        'repeat_every_days': routine.repeatEveryDays,
       });
 
       if (!result.containsKey('error')) {
@@ -108,6 +110,7 @@ class RoutineProvider extends ChangeNotifier {
     String? userId,
     String? scheduleTime,
     int? durationMinutes,
+    int repeatEveryDays = 1,
   }) async {
     String actualUserId;
     if (userId != null) {
@@ -131,9 +134,59 @@ class RoutineProvider extends ChangeNotifier {
       updatedAt: DateTime.now(),
       scheduleTime: scheduleTime,
       durationMinutes: durationMinutes,
+      repeatEveryDays: repeatEveryDays,
     );
 
     await createRoutine(routine);
+  }
+
+  // Actualizar rutina existente
+  Future<void> updateRoutine(Routine routine) async {
+    try {
+      final result = await ApiService.updateRoutine(routine.id, {
+        'title': routine.name,
+        'description': routine.description,
+        'frequency': routine.frequency.toString().split('.').last,
+        'color': routine.color,
+        'is_active': routine.isActive,
+        'schedule_time': routine.scheduleTime,
+        'duration_minutes': routine.durationMinutes,
+        'repeat_every_days': routine.repeatEveryDays,
+      });
+
+      if (!result.containsKey('error')) {
+        final index = _routines.indexWhere((r) => r.id == routine.id);
+        if (index != -1) {
+          _routines[index] = routine.copyWith(updatedAt: DateTime.now());
+        }
+        debugPrint('✅ Rutina actualizada: ${routine.name}');
+      } else {
+        throw Exception(result['error']);
+      }
+    } catch (e) {
+      debugPrint('❌ Error actualizando rutina: $e');
+      rethrow;
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  // Eliminar rutina
+  Future<void> deleteRoutine(String routineId) async {
+    try {
+      final success = await ApiService.deleteRoutine(routineId);
+      if (success) {
+        _routines.removeWhere((r) => r.id == routineId);
+        debugPrint('✅ Rutina eliminada: $routineId');
+      } else {
+        throw Exception('Error al eliminar la rutina');
+      }
+    } catch (e) {
+      debugPrint('❌ Error eliminando rutina: $e');
+      rethrow;
+    } finally {
+      notifyListeners();
+    }
   }
 
   // Obtener rutinas por fecha (para calendario)

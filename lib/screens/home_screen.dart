@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:zen/providers/providers.dart';
 import 'package:zen/screens/calendar_screen.dart';
 import 'package:zen/screens/analytics_screen.dart';
-import 'package:zen/screens/projects_screen.dart';
+import 'package:zen/screens/routines_screen.dart';
 import 'package:zen/screens/profile_screen.dart';
 import 'package:zen/services/services.dart';
 
@@ -22,7 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = [
     const CalendarScreen(),
     const AnalyticsScreen(),
-    const ProjectsScreen(),
+    const RoutinesScreen(),
     const ProfileScreen(),
   ];
 
@@ -139,9 +139,9 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Análisis',
           ),
           NavigationDestination(
-            icon: Icon(Icons.folder_outlined),
-            selectedIcon: Icon(Icons.folder),
-            label: 'Proyectos',
+            icon: Icon(Icons.repeat_outlined),
+            selectedIcon: Icon(Icons.repeat),
+            label: 'Rutinas',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
