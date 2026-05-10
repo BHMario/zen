@@ -173,6 +173,56 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> updateUserSettings({
+    required String userId,
+    required Map<String, dynamic> settings,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.put(
+        Uri.parse('$baseUrl/users/$userId/settings'),
+        headers: headers,
+        body: jsonEncode(settings),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        try {
+          final error = jsonDecode(response.body);
+          return {'error': error['error'] ?? 'Error al actualizar configuración'};
+        } catch (e) {
+          return {'error': 'Error: ${response.statusCode}'};
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error en updateUserSettings: $e');
+      return {'error': e.toString()};
+    }
+  }
+
+  static Future<bool> deleteAccount(String userId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.delete(
+        Uri.parse('$baseUrl/users/$userId'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
+        return false;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ Error en deleteAccount: $e');
+      return false;
+    }
+  }
+
   // ==================== TASKS ====================
 
   static Future<List<Map<String, dynamic>>> getTasks({String? userId}) async {

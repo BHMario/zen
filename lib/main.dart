@@ -52,7 +52,6 @@ class _HomeWrapperState extends State<_HomeWrapper> {
   void initState() {
     super.initState();
     _authProvider = context.read<AuthProvider>();
-    // Usar Future.microtask para evitar setState durante build
     Future.microtask(() => _authProvider.checkAuthStatus());
   }
 
@@ -60,8 +59,7 @@ class _HomeWrapperState extends State<_HomeWrapper> {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, _) {
-        if (authProvider.isLoading) {
-          // Mostrar splash screen mientras se verifica la sesión
+        if (authProvider.isLoading && !authProvider.isAuthenticated) {
           return const Scaffold(
             body: Center(
               child: CircularProgressIndicator(),
