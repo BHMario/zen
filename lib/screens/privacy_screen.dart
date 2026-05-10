@@ -8,7 +8,7 @@ import 'package:zen/models/models.dart';
 import 'package:zen/theme/zen_theme.dart';
 import 'package:zen/services/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
+import 'package:zen/utils/web_downloader.dart';
 
 class PrivacyScreen extends StatefulWidget {
   const PrivacyScreen({super.key});
@@ -27,18 +27,13 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
       final fileName = 'zen_datos_${user.id.substring(0, 5)}.json';
 
       if (kIsWeb) {
-        // En Web, simplemente lanzamos la URL y el navegador gestiona la descarga
-        // gracias a los headers Content-Disposition del backend.
-        final uri = Uri.parse(url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Iniciando descarga en el navegador...')),
-            );
-          }
-        } else {
-          throw Exception('No se pudo abrir el enlace de descarga');
+        // Usamos nuestra utilidad con importación condicional
+        downloadWeb(url, fileName);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Descarga iniciada en el navegador')),
+          );
         }
         return;
       }
