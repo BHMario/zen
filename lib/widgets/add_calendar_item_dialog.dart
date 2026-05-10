@@ -30,6 +30,8 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   DateTime? _projectStartDate;
   DateTime? _projectEndDate;
   TaskPriority _priority = TaskPriority.medium;
+  GoalCategory _goalCategory = GoalCategory.other;
+  GoalTimeframe _goalTimeframe = GoalTimeframe.mediumTerm;
   String _selectedColor = '#6366F1';
   List<String> _selectedLabels = [];
   bool _setReminder = false;
@@ -142,6 +144,36 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
         return 'Alta';
       case TaskPriority.urgent:
         return 'Urgente';
+    }
+  }
+
+  String _goalCategoryLabel(GoalCategory category) {
+    switch (category) {
+      case GoalCategory.health:
+        return 'Salud';
+      case GoalCategory.career:
+        return 'Carrera';
+      case GoalCategory.personal:
+        return 'Personal';
+      case GoalCategory.finance:
+        return 'Finanzas';
+      case GoalCategory.education:
+        return 'Educación';
+      case GoalCategory.relationships:
+        return 'Relaciones';
+      case GoalCategory.other:
+        return 'Otro';
+    }
+  }
+
+  String _goalTimeframeLabel(GoalTimeframe timeframe) {
+    switch (timeframe) {
+      case GoalTimeframe.shortTerm:
+        return 'Corto plazo';
+      case GoalTimeframe.mediumTerm:
+        return 'Medio plazo';
+      case GoalTimeframe.longTerm:
+        return 'Largo plazo';
     }
   }
 
@@ -281,10 +313,12 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     await context.read<GoalProvider>().addGoal(
       title: _titleController.text,
       description: _descriptionController.text,
-      category: GoalCategory.other,
-      timeframe: GoalTimeframe.mediumTerm,
+      category: _goalCategory,
+      timeframe: _goalTimeframe,
       startDate: widget.selectedDate,
       targetDate: _dueDate ?? widget.selectedDate.add(const Duration(days: 30)),
+      targetValue: 100,
+      unit: '%',
       color: _selectedColor,
       userId: userId,
     );
@@ -539,6 +573,46 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                     );
                   },
                 ),
+              ],
+
+              // Formulario específico de objetivos
+              if (_selectedType == 'goal') ...[
+                DropdownButtonFormField<GoalCategory>(
+                  value: _goalCategory,
+                  decoration: const InputDecoration(
+                    hintText: 'Selecciona categoría',
+                    labelText: 'Categoría',
+                    prefixIcon: Icon(Icons.category_outlined),
+                  ),
+                  items: GoalCategory.values
+                      .map((c) => DropdownMenuItem(
+                            value: c,
+                            child: Text(_goalCategoryLabel(c)),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _goalCategory = value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<GoalTimeframe>(
+                  value: _goalTimeframe,
+                  decoration: const InputDecoration(
+                    hintText: 'Selecciona plazo',
+                    labelText: 'Plazo',
+                    prefixIcon: Icon(Icons.timeline_outlined),
+                  ),
+                  items: GoalTimeframe.values
+                      .map((t) => DropdownMenuItem(
+                            value: t,
+                            child: Text(_goalTimeframeLabel(t)),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _goalTimeframe = value);
+                  },
+                ),
+                const SizedBox(height: 16),
               ],
               
               // Color

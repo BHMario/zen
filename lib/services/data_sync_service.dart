@@ -12,10 +12,10 @@ class DataSyncService {
     required AuthProvider authProvider,
     required TaskProvider taskProvider,
     required ProjectProvider projectProvider,
+    required RoutineProvider routineProvider,
+    required GoalProvider goalProvider,
     required ReminderProvider reminderProvider,
     required AnalyticsProvider analyticsProvider,
-    RoutineProvider? routineProvider,
-    GoalProvider? goalProvider,
   }) async {
     try {
       debugPrint('🔄 Iniciando sincronización de datos para usuario: $userId');
@@ -23,9 +23,9 @@ class DataSyncService {
       // Establecer el usuario actual en todos los providers
       taskProvider.setCurrentUser(userId);
       projectProvider.setCurrentUser(userId);
+      routineProvider.setCurrentUser(userId);
+      goalProvider.setCurrentUser(userId);
       reminderProvider.setCurrentUser(userId);
-      routineProvider?.setCurrentUser(userId);
-      goalProvider?.setCurrentUser(userId);
 
       // Cargar tareas desde API
       debugPrint('📋 Cargando tareas...');
@@ -37,24 +37,20 @@ class DataSyncService {
       await projectProvider.loadUserProjects(userId);
       debugPrint('✅ Proyectos cargados: ${projectProvider.projects.length}');
 
+      // Cargar rutinas desde API
+      debugPrint('🔄 Cargando rutinas...');
+      await routineProvider.loadUserRoutines(userId);
+      debugPrint('✅ Rutinas cargadas: ${routineProvider.routines.length}');
+
+      // Cargar objetivos desde API
+      debugPrint('🎯 Cargando objetivos...');
+      await goalProvider.loadUserGoals(userId);
+      debugPrint('✅ Objetivos cargados: ${goalProvider.goals.length}');
+
       // Cargar recordatorios desde API
       debugPrint('⏰ Cargando recordatorios...');
       await reminderProvider.loadReminders(userId);
       debugPrint('✅ Recordatorios cargados: ${reminderProvider.reminders.length}');
-
-      // Cargar rutinas desde API
-      if (routineProvider != null) {
-        debugPrint('🔄 Cargando rutinas...');
-        await routineProvider.loadUserRoutines(userId);
-        debugPrint('✅ Rutinas cargadas: ${routineProvider.routines.length}');
-      }
-
-      // Cargar objetivos desde API
-      if (goalProvider != null) {
-        debugPrint('🎯 Cargando objetivos...');
-        await goalProvider.loadUserGoals(userId);
-        debugPrint('✅ Objetivos cargados: ${goalProvider.goals.length}');
-      }
 
       // Cargar analítica
       debugPrint('📈 Cargando analítica...');

@@ -24,10 +24,58 @@ const pool = mysql.createPool({
   timezone: '+00:00'
 });
 
-// Verificar conexión a BD
-pool.getConnection().then(conn => {
+// Verificar conexión a BD y ejecutar migraciones
+pool.getConnection().then(async conn => {
   console.log('✅ Conectado a MySQL');
+
+  const migrations = [
+    // routines
+    'ALTER TABLE routines ADD COLUMN repeat_every_days INT DEFAULT 1',
+    'ALTER TABLE routines ADD COLUMN schedule_time VARCHAR(5) DEFAULT NULL',
+    'ALTER TABLE routines ADD COLUMN is_active BOOLEAN DEFAULT TRUE',
+    'ALTER TABLE routines ADD COLUMN duration_minutes INT DEFAULT NULL',
+    'ALTER TABLE routines ADD COLUMN steps TEXT',
+    // goals
+    'ALTER TABLE goals ADD COLUMN target_value FLOAT DEFAULT 1',
+    'ALTER TABLE goals ADD COLUMN current_value FLOAT DEFAULT 0',
+    'ALTER TABLE goals ADD COLUMN unit VARCHAR(50) DEFAULT NULL',
+    'ALTER TABLE goals ADD COLUMN start_date DATE',
+    'ALTER TABLE goals ADD COLUMN is_completed BOOLEAN DEFAULT FALSE',
+  ];
+
+  for (const sql of migrations) {
+    try {
+      await conn.execute(sql);
+    } catch (e) {
+      // Ignora error de columna duplicada en bases ya migradas
+      if (e.code !== 'ER_DUP_FIELDNAME') {
+        console.error('⚠️ Error en migración:', e.message);
+      }
+    }
+  }
+
+  try {
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS routine_completions (
+        id VARCHAR(36) PRIMARY KEY,
+        routine_id VARCHAR(36) NOT NULL,
+        user_id VARCHAR(36) NOT NULL,
+        completion_date DATE NOT NULL,
+        is_completed BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_routine_completion (routine_id, user_id, completion_date),
+        FOREIGN KEY (routine_id) REFERENCES routines(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_user_date (user_id, completion_date)
+      )
+    `);
+  } catch (e) {
+    console.error('⚠️ Error creando routine_completions:', e.message);
+  }
+
   conn.release();
+  console.log('✅ Migraciones completadas');
 }).catch(err => {
   console.error('❌ Error conectando a MySQL:', err.message);
 });

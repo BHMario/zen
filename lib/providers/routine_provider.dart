@@ -5,12 +5,45 @@ import 'package:zen/services/services.dart';
 
 class RoutineProvider extends ChangeNotifier {
   List<Routine> _routines = [];
+  final Map<String, Set<String>> _completedDatesByRoutine = {};
   bool _isLoading = false;
   String? _currentUserId;
 
   // Getters
   List<Routine> get routines => _routines;
   bool get isLoading => _isLoading;
+
+  String _normalizeDate(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  bool isRoutineCompletedOnDate(String routineId, DateTime date) {
+    final normalized = _normalizeDate(date);
+    return _completedDatesByRoutine[routineId]?.contains(normalized) ?? false;
+  }
+
+  int getCompletedCountForWeek(DateTime referenceDate) {
+    final current = DateTime(referenceDate.year, referenceDate.month, referenceDate.day);
+    final weekStart = current.subtract(Duration(days: current.weekday - 1));
+    final weekEnd = weekStart.add(const Duration(days: 6));
+
+    int count = 0;
+    for (final dates in _completedDatesByRoutine.values) {
+      for (final dateString in dates) {
+        final parts = dateString.split('-');
+        if (parts.length != 3) continue;
+        final d = DateTime(
+          int.parse(parts[0]),
+          int.parse(parts[1]),
+          int.parse(parts[2]),
+        );
+        if (!d.isBefore(weekStart) && !d.isAfter(weekEnd)) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
 
   // Establecer usuario actual
   void setCurrentUser(String userId) {
@@ -43,6 +76,21 @@ class RoutineProvider extends ChangeNotifier {
           }
         }
 
+        List<String> steps = [];
+        if (routineData['steps'] != null) {
+          final stepsData = routineData['steps'];
+          if (stepsData is String) {
+            try {
+              final parsed = jsonDecode(stepsData) as List;
+              steps = parsed.map((e) => e.toString()).toList();
+            } catch (_) {
+              steps = [];
+            }
+          } else if (stepsData is List) {
+            steps = stepsData.map((e) => e.toString()).toList();
+          }
+        }
+
         return Routine(
           id: routineData['id'] as String,
           name: routineData['title'] as String? ?? routineData['name'] as String,
@@ -53,11 +101,24 @@ class RoutineProvider extends ChangeNotifier {
           createdBy: userId,
           createdAt: DateTime.parse(routineData['created_at'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
           updatedAt: DateTime.parse(routineData['updated_at'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
-          isActive: routineData['is_active'] as bool? ?? true,
+          isActive: routineData['is_active'] == 1 || routineData['is_active'] == true,
           scheduleTime: routineData['schedule_time'] as String?,
-          durationMinutes: routineData['duration_minutes'] as int?,
+          durationMinutes: (routineData['duration_minutes'] as num?)?.toInt(),
+          repeatEveryDays: (routineData['repeat_every_days'] as num?)?.toInt() ?? 1,
+          steps: steps,
         );
       }).toList();
+
+      final completions = await ApiService.getRoutineCompletions(userId: userId);
+      _completedDatesByRoutine.clear();
+      for (final c in completions) {
+        final routineId = c['routine_id']?.toString();
+        final rawDate = c['completion_date']?.toString();
+        if (routineId == null || rawDate == null) continue;
+        final normalized = rawDate.contains('T') ? rawDate.split('T')[0] : rawDate;
+        _completedDatesByRoutine.putIfAbsent(routineId, () => <String>{}).add(normalized);
+      }
+
       debugPrint('✅ ${_routines.length} rutinas cargadas desde API');
     } catch (e) {
       debugPrint('❌ Error loading routines from API: $e');
@@ -85,6 +146,8 @@ class RoutineProvider extends ChangeNotifier {
         'schedule_time': routine.scheduleTime,
         'duration_minutes': routine.durationMinutes,
         'created_by': routine.createdBy,
+        'repeat_every_days': routine.repeatEveryDays,
+        'steps': routine.steps,
       });
 
       if (!result.containsKey('error')) {
@@ -111,6 +174,8 @@ class RoutineProvider extends ChangeNotifier {
     String? userId,
     String? scheduleTime,
     int? durationMinutes,
+    int repeatEveryDays = 1,
+    List<String> steps = const [],
   }) async {
     String actualUserId;
     if (userId != null) {
@@ -134,30 +199,90 @@ class RoutineProvider extends ChangeNotifier {
       updatedAt: DateTime.now(),
       scheduleTime: scheduleTime,
       durationMinutes: durationMinutes,
+      repeatEveryDays: repeatEveryDays,
+      steps: steps,
     );
 
     await createRoutine(routine);
   }
 
-  // Obtener rutinas por fecha (para calendario)
+  // Actualizar rutina existente
+  Future<void> updateRoutine(Routine routine) async {
+    try {
+      final result = await ApiService.updateRoutine(routine.id, {
+        'title': routine.name,
+        'description': routine.description,
+        'frequency': routine.frequency.toString().split('.').last,
+        'color': routine.color,
+        'is_active': routine.isActive,
+        'schedule_time': routine.scheduleTime,
+        'duration_minutes': routine.durationMinutes,
+        'repeat_every_days': routine.repeatEveryDays,
+        'steps': routine.steps,
+      });
+
+      if (!result.containsKey('error')) {
+        final index = _routines.indexWhere((r) => r.id == routine.id);
+        if (index != -1) {
+          _routines[index] = routine.copyWith(updatedAt: DateTime.now());
+        }
+        debugPrint('✅ Rutina actualizada: ${routine.name}');
+      } else {
+        throw Exception(result['error']);
+      }
+    } catch (e) {
+      debugPrint('❌ Error actualizando rutina: $e');
+      rethrow;
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  // Eliminar rutina
+  Future<void> deleteRoutine(String routineId) async {
+    try {
+      final success = await ApiService.deleteRoutine(routineId);
+      if (success) {
+        _routines.removeWhere((r) => r.id == routineId);
+        debugPrint('✅ Rutina eliminada: $routineId');
+      } else {
+        throw Exception('Error al eliminar la rutina');
+      }
+    } catch (e) {
+      debugPrint('❌ Error eliminando rutina: $e');
+      rethrow;
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  // Obtener rutinas por fecha (considera repeatEveryDays desde createdAt)
   List<Routine> getRoutinesByDate(DateTime date) {
-    // Para rutinas que se repiten en ciertos días de la semana,
-    // mostrar si ese día de la semana está en la lista
-    final dayOfWeek = DayOfWeek.values[date.weekday - 1]; // Monday=1 en DateTime, Monday=0 en enum
-    
-    return _routines
-        .where((routine) {
-          if (!routine.isActive) return false;
-          
-          // Si no hay días específicos, mostrar todos los días (daily)
-          if (routine.daysOfWeek.isEmpty) {
-            return routine.frequency == Frequency.daily;
-          }
-          
-          // Si hay días específicos, mostrar si este día está en la lista
-          return routine.daysOfWeek.contains(dayOfWeek);
-        })
-        .toList();
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final dayOfWeek = DayOfWeek.values[date.weekday - 1];
+
+    return _routines.where((routine) {
+      if (!routine.isActive) return false;
+
+      // Si usa repetición cada N días, aplicar esa lógica.
+      if (routine.repeatEveryDays > 0) {
+        final normalizedCreated = DateTime(
+          routine.createdAt.year,
+          routine.createdAt.month,
+          routine.createdAt.day,
+        );
+        if (normalizedDate.isBefore(normalizedCreated)) return false;
+        final dayDiff = normalizedDate.difference(normalizedCreated).inDays;
+        return dayDiff % routine.repeatEveryDays == 0;
+      }
+
+      // Compatibilidad con lógica por frecuencia/días de semana.
+      if (routine.daysOfWeek.isNotEmpty) {
+        return routine.daysOfWeek.contains(dayOfWeek);
+      }
+
+      return routine.frequency == Frequency.daily;
+    }).toList();
   }
 
   // Obtener rutinas activas
@@ -165,9 +290,50 @@ class RoutineProvider extends ChangeNotifier {
     return _routines.where((r) => r.isActive).toList();
   }
 
+  Future<void> setRoutineCompletedForDate({
+    required String routineId,
+    required DateTime date,
+    required bool completed,
+  }) async {
+    if (_currentUserId == null) {
+      throw Exception('Usuario no autenticado');
+    }
+
+    final ok = await ApiService.setRoutineCompletion(
+      routineId: routineId,
+      userId: _currentUserId!,
+      completionDate: date,
+      completed: completed,
+    );
+
+    if (!ok) {
+      throw Exception('No se pudo actualizar el estado de la rutina');
+    }
+
+    final normalized = _normalizeDate(date);
+    final set = _completedDatesByRoutine.putIfAbsent(routineId, () => <String>{});
+    if (completed) {
+      set.add(normalized);
+    } else {
+      set.remove(normalized);
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> toggleRoutineCompletedForDate(String routineId, DateTime date) async {
+    final current = isRoutineCompletedOnDate(routineId, date);
+    await setRoutineCompletedForDate(
+      routineId: routineId,
+      date: date,
+      completed: !current,
+    );
+  }
+
   // Limpiar todas las rutinas
   void clear() {
     _routines.clear();
+    _completedDatesByRoutine.clear();
   }
 
   // Parsear frecuencia

@@ -36,6 +36,29 @@ const initializeDatabase = async () => {
     `);
     console.log('✅ Tabla users creada');
 
+    // Tabla de proyectos (antes de tasks para la FK project_id)
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS projects (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        color VARCHAR(7) DEFAULT '#3B82F6',
+        start_date DATE,
+        end_date DATE,
+        status VARCHAR(50) DEFAULT 'active',
+        created_by VARCHAR(36) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_user_id (user_id),
+        INDEX idx_start_date (start_date),
+        INDEX idx_end_date (end_date)
+      );
+    `);
+    console.log('✅ Tabla projects creada');
+
     // Tabla de tareas (due_date como DATE para consistencia)
     await connection.query(`
       CREATE TABLE IF NOT EXISTS tasks (
@@ -63,29 +86,6 @@ const initializeDatabase = async () => {
       );
     `);
     console.log('✅ Tabla tasks creada');
-
-    // Tabla de proyectos (fechas como DATE, no DATETIME - para evitar problemas de zona horaria)
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS projects (
-        id VARCHAR(36) PRIMARY KEY,
-        user_id VARCHAR(36) NOT NULL,
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        color VARCHAR(7) DEFAULT '#3B82F6',
-        start_date DATE,
-        end_date DATE,
-        status VARCHAR(50) DEFAULT 'active',
-        created_by VARCHAR(36) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
-        INDEX idx_user_id (user_id),
-        INDEX idx_start_date (start_date),
-        INDEX idx_end_date (end_date)
-      );
-    `);
-    console.log('✅ Tabla projects creada');
 
     // Tabla de recordatorios
     await connection.query(`
@@ -117,9 +117,11 @@ const initializeDatabase = async () => {
         frequency VARCHAR(50) NOT NULL,
         days_of_week VARCHAR(255),
         color VARCHAR(7) DEFAULT '#10B981',
+        repeat_every_days INT DEFAULT 1,
         is_active BOOLEAN DEFAULT TRUE,
         schedule_time VARCHAR(5),
         duration_minutes INT,
+        steps TEXT,
         created_by VARCHAR(36) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -128,18 +130,54 @@ const initializeDatabase = async () => {
         INDEX idx_user_id (user_id)
       );
     `);
+    // Añadir columnas que podrían faltar en BDs existentes
+    const routineAlterCols = [
+      'repeat_every_days INT DEFAULT 1',
+      'schedule_time VARCHAR(5) DEFAULT NULL',
+      'is_active BOOLEAN DEFAULT TRUE',
+      'duration_minutes INT DEFAULT NULL',
+      'steps TEXT',
+    ];
+    for (const col of routineAlterCols) {
+      try {
+        await connection.query(`ALTER TABLE routines ADD COLUMN ${col};`);
+      } catch (e) {
+        // La columna ya existe (ER_DUP_FIELDNAME), ignorar
+      }
+    }
     console.log('✅ Tabla routines creada');
+
+    // Tabla de completados diarios de rutinas
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS routine_completions (
+        id VARCHAR(36) PRIMARY KEY,
+        routine_id VARCHAR(36) NOT NULL,
+        user_id VARCHAR(36) NOT NULL,
+        completion_date DATE NOT NULL,
+        is_completed BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_routine_completion (routine_id, user_id, completion_date),
+        FOREIGN KEY (routine_id) REFERENCES routines(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_user_date (user_id, completion_date)
+      );
+    `);
+    console.log('✅ Tabla routine_completions creada');
 
     // Tabla de objetivos
     await connection.query(`
       CREATE TABLE IF NOT EXISTS goals (
         id VARCHAR(36) PRIMARY KEY,
         user_id VARCHAR(36) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        category VARCHAR(100),
         start_date DATE,
         target_date DATE,
         target_value DECIMAL(10,2) DEFAULT 1.0,
         current_value DECIMAL(10,2) DEFAULT 0.0,
-        unit VARCHAR(50) DEFAULT 'unidades',
+        unit VARCHAR(50) DEFAULT '%',
         timeframe VARCHAR(50) DEFAULT 'mediumTerm',
         is_completed BOOLEAN DEFAULT FALSE,
         color VARCHAR(7) DEFAULT '#F59E0B',
@@ -150,12 +188,30 @@ const initializeDatabase = async () => {
         FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
         INDEX idx_user_id (user_id),
         INDEX idx_start_date (start_date),
-        INDEX idx_target_date (target_dateLT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
-        INDEX idx_user_id (user_id)
+        INDEX idx_target_date (target_date)
       );
     `);
+
+    const goalAlterCols = [
+      'title VARCHAR(255) NOT NULL',
+      'description TEXT',
+      'category VARCHAR(100)',
+      'start_date DATE',
+      'target_date DATE',
+      'target_value DECIMAL(10,2) DEFAULT 1.0',
+      'current_value DECIMAL(10,2) DEFAULT 0.0',
+      "unit VARCHAR(50) DEFAULT '%'",
+      "timeframe VARCHAR(50) DEFAULT 'mediumTerm'",
+      'is_completed BOOLEAN DEFAULT FALSE',
+      "color VARCHAR(7) DEFAULT '#F59E0B'",
+    ];
+    for (const col of goalAlterCols) {
+      try {
+        await connection.query(`ALTER TABLE goals ADD COLUMN ${col};`);
+      } catch (e) {
+        // La columna ya existe (ER_DUP_FIELDNAME), ignorar
+      }
+    }
     console.log('✅ Tabla goals creada');
 
     console.log('✅ Todas las tablas inicializadas correctamente');

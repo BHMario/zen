@@ -52,7 +52,6 @@ module.exports = (pool) => {
         const match = dateStr.match(/^\d{4}-\d{2}-\d{2}/);
         return match ? match[0] : null;
       };
-
       const params = [
         goalId,
         user_id,
@@ -61,11 +60,11 @@ module.exports = (pool) => {
         category === undefined ? null : category,
         extractDate(start_date),
         extractDate(target_date),
-        target_value || 1.0,
-        current_value || 0.0,
-        unit || 'unidades',
+        target_value !== undefined ? target_value : 1.0,
+        current_value !== undefined ? current_value : 0.0,
+        unit || '%',
         timeframe || 'mediumTerm',
-        is_completed || false,
+        is_completed === true || is_completed === 1,
         color === undefined ? null : color,
         created_by || user_id
       ];
