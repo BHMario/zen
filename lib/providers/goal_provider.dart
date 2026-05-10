@@ -208,7 +208,14 @@ class GoalProvider extends ChangeNotifier {
 
   // Marcar como completado / reactivar
   Future<void> toggleComplete(Goal goal) async {
-    await updateGoal(goal.copyWith(isCompleted: !goal.isCompleted, updatedAt: DateTime.now()));
+    final willComplete = !goal.isCompleted;
+    await updateGoal(
+      goal.copyWith(
+        isCompleted: willComplete,
+        currentValue: willComplete ? goal.targetValue : goal.currentValue,
+        updatedAt: DateTime.now(),
+      ),
+    );
   }
 
   // Actualizar progreso

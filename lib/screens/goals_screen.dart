@@ -29,8 +29,6 @@ class _GoalsScreenState extends State<GoalsScreen> {
   Future<void> _showAddGoalDialog() async {
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
-    final targetController = TextEditingController(text: '1');
-    final unitController = TextEditingController(text: 'unidades');
     DateTime targetDate = DateTime.now().add(const Duration(days: 30));
     GoalCategory category = GoalCategory.other;
     GoalTimeframe timeframe = GoalTimeframe.mediumTerm;
@@ -83,33 +81,6 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: targetController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText: 'Meta',
-                          hintText: '100',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: unitController,
-                        decoration: const InputDecoration(
-                          labelText: 'Unidad',
-                          hintText: 'km / horas',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Fecha objetivo'),
@@ -155,8 +126,6 @@ class _GoalsScreenState extends State<GoalsScreen> {
         }
         titleController.dispose();
         descriptionController.dispose();
-        targetController.dispose();
-        unitController.dispose();
         return;
       }
 
@@ -171,10 +140,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
               timeframe: timeframe,
               startDate: DateTime.now(),
               targetDate: targetDate,
-              targetValue: double.tryParse(targetController.text.trim()) ?? 1,
-              unit: unitController.text.trim().isEmpty
-                  ? 'unidades'
-                  : unitController.text.trim(),
+              targetValue: 100,
+              unit: '%',
               userId: userId,
             );
       } else if (mounted) {
@@ -186,17 +153,13 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
     titleController.dispose();
     descriptionController.dispose();
-    targetController.dispose();
-    unitController.dispose();
   }
 
   Future<void> _showEditGoalDialog(Goal goal) async {
     final titleController = TextEditingController(text: goal.title);
     final descriptionController =
         TextEditingController(text: goal.description ?? '');
-    final targetController = TextEditingController(text: goal.targetValue.toString());
-    final currentController = TextEditingController(text: goal.currentValue.toString());
-    final unitController = TextEditingController(text: goal.unit);
+    final currentController = TextEditingController(text: goal.currentValue.toStringAsFixed(0));
     DateTime targetDate = goal.targetDate;
     GoalCategory category = goal.category;
     GoalTimeframe timeframe = goal.timeframe;
@@ -250,20 +213,12 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: targetController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Meta'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
                   controller: currentController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Progreso actual'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: unitController,
-                  decoration: const InputDecoration(labelText: 'Unidad'),
+                  decoration: const InputDecoration(
+                    labelText: 'Progreso (%)',
+                    hintText: '0 a 100',
+                  ),
                 ),
                 const SizedBox(height: 12),
                 ListTile(
@@ -303,8 +258,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
     );
 
     if (saved == true) {
-      final target = double.tryParse(targetController.text.trim()) ?? goal.targetValue;
-      final current = double.tryParse(currentController.text.trim()) ?? goal.currentValue;
+      final currentInput = double.tryParse(currentController.text.trim()) ?? goal.currentValue;
+      final current = currentInput.clamp(0, 100).toDouble();
       final updated = goal.copyWith(
         title: titleController.text.trim(),
         description: descriptionController.text.trim().isEmpty
@@ -313,10 +268,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
         category: category,
         timeframe: timeframe,
         targetDate: targetDate,
-        targetValue: target,
+        targetValue: 100,
         currentValue: current,
-        unit: unitController.text.trim().isEmpty ? goal.unit : unitController.text.trim(),
-        isCompleted: current >= target,
+        unit: '%',
+        isCompleted: current >= 100,
         updatedAt: DateTime.now(),
       );
       await context.read<GoalProvider>().updateGoal(updated);
@@ -324,9 +279,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
     titleController.dispose();
     descriptionController.dispose();
-    targetController.dispose();
     currentController.dispose();
-    unitController.dispose();
   }
 
   Future<void> _deleteGoal(Goal goal) async {
@@ -381,7 +334,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
             return EmptyState(
               emoji: '🎯',
               title: 'Sin objetivos',
-              description: 'Define tu primer objetivo con una meta y fecha.',
+              description: 'Define tu primer objetivo y su fecha límite.',
               buttonText: 'Crear objetivo',
               onButtonPressed: _showAddGoalDialog,
             );
@@ -502,7 +455,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
             Row(
               children: [
                 Text(
-                  '${goal.currentValue.toStringAsFixed(1)} / ${goal.targetValue.toStringAsFixed(1)} ${goal.unit}',
+                  'Progreso: ${goal.currentValue.toStringAsFixed(0)}%',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const Spacer(),

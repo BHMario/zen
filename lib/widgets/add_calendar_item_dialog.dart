@@ -21,8 +21,6 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   String _selectedType = 'task'; // task, project, routine, goal
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
-  late TextEditingController _goalTargetValueController;
-  late TextEditingController _goalUnitController;
   DateTime? _dueDate;
   DateTime? _projectStartDate;
   DateTime? _projectEndDate;
@@ -49,8 +47,6 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     super.initState();
     _titleController = TextEditingController();
     _descriptionController = TextEditingController();
-    _goalTargetValueController = TextEditingController(text: '1');
-    _goalUnitController = TextEditingController(text: 'unidades');
     // Normalizar todas las fechas iniciales para evitar problemas de zona horaria
     _dueDate = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
     _projectStartDate = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
@@ -62,8 +58,6 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
-    _goalTargetValueController.dispose();
-    _goalUnitController.dispose();
     super.dispose();
   }
 
@@ -257,8 +251,6 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
       throw Exception('Usuario no autenticado');
     }
 
-    final parsedTarget = double.tryParse(_goalTargetValueController.text.trim()) ?? 1.0;
-
     await context.read<GoalProvider>().addGoal(
       title: _titleController.text,
       description: _descriptionController.text,
@@ -266,8 +258,8 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
       timeframe: _goalTimeframe,
       startDate: widget.selectedDate,
       targetDate: _dueDate ?? widget.selectedDate.add(const Duration(days: 30)),
-      targetValue: parsedTarget,
-      unit: _goalUnitController.text.trim().isEmpty ? 'unidades' : _goalUnitController.text.trim(),
+      targetValue: 100,
+      unit: '%',
       color: _selectedColor,
       userId: userId,
     );
@@ -525,33 +517,6 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                   onChanged: (value) {
                     if (value != null) setState(() => _goalTimeframe = value);
                   },
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _goalTargetValueController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Objetivo a alcanzar',
-                          hintText: 'Ej: 100',
-                          prefixIcon: Icon(Icons.flag_outlined),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _goalUnitController,
-                        decoration: const InputDecoration(
-                          labelText: 'Unidad',
-                          hintText: 'km, horas, libros',
-                          prefixIcon: Icon(Icons.straighten_outlined),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
                 const SizedBox(height: 16),
               ],

@@ -119,7 +119,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         .map(
                           (p) => DropdownMenuItem(
                             value: p,
-                            child: Text(p.name.toUpperCase()),
+                            child: Text(_getPriorityLabel(p)),
                           ),
                         )
                         .toList(),
@@ -208,8 +208,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         content: TextField(
           controller: controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: InputDecoration(
-            labelText: 'Valor actual (${goal.unit})',
+          decoration: const InputDecoration(
+            labelText: 'Progreso (%)',
+            hintText: '0 a 100',
           ),
         ),
         actions: [
@@ -732,6 +733,41 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  String _getPriorityLabel(TaskPriority priority) {
+    switch (priority) {
+      case TaskPriority.low:
+        return 'Baja';
+      case TaskPriority.medium:
+        return 'Media';
+      case TaskPriority.high:
+        return 'Alta';
+      case TaskPriority.urgent:
+        return 'Urgente';
+    }
+  }
+
+  String _getProjectStatusLabel(ProjectStatus status) {
+    switch (status) {
+      case ProjectStatus.planning:
+        return 'Planificación';
+      case ProjectStatus.active:
+        return 'Activo';
+      case ProjectStatus.onHold:
+        return 'En pausa';
+      case ProjectStatus.completed:
+        return 'Completado';
+    }
+  }
+
+  String _getRoutineFrequencyLabel(Routine routine) {
+    final days = routine.repeatEveryDays;
+    if (days == 1) return 'Diaria';
+    if (days == 7) return 'Semanal';
+    if (days == 14) return 'Cada 2 semanas';
+    if (days == 30) return 'Mensual';
+    return 'Cada $days días';
+  }
+
   // Métodos para obtener items filtrados
   List<dynamic> _getFilteredItemsForDate(
     DateTime date,
@@ -844,7 +880,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     } else if (item is Project) {
       chips.add(Chip(
         label: Text(
-          item.status.toString().split('.').last.toUpperCase(),
+          _getProjectStatusLabel(item.status),
           style: const TextStyle(fontSize: 10),
         ),
         visualDensity: VisualDensity.compact,
@@ -853,7 +889,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     } else if (item is Routine) {
       chips.add(Chip(
         label: Text(
-          item.frequency.toString().split('.').last.toUpperCase(),
+          _getRoutineFrequencyLabel(item),
           style: const TextStyle(fontSize: 10),
         ),
         visualDensity: VisualDensity.compact,

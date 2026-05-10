@@ -2,6 +2,7 @@ export 'home_screen.dart';
 export 'login_screen.dart';
 export 'calendar_screen.dart';
 export 'analytics_screen.dart';
+export 'tasks_screen.dart';
 export 'projects_screen.dart';
 export 'profile_screen.dart';
 export 'routines_screen.dart';
