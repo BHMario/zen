@@ -3,6 +3,24 @@ const express = require('express');
 module.exports = (pool) => {
   const router = express.Router();
 
+  // Obtener completados de rutinas del usuario
+  router.get('/:userId/completions', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const connection = await pool.getConnection();
+
+      const [rows] = await connection.execute(
+        'SELECT routine_id, completion_date FROM routine_completions WHERE user_id = ? AND is_completed = 1',
+        [userId]
+      );
+
+      connection.release();
+      res.status(200).json(rows);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Obtener rutinas del usuario
   router.get('/:userId', async (req, res) => {
     try {
@@ -62,6 +80,39 @@ module.exports = (pool) => {
       res.status(201).json({ message: 'Rutina creada', routineId: routineId });
     } catch (error) {
       console.error('❌ Error creando rutina:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Marcar/desmarcar rutina como completada en un día concreto
+  router.post('/:routineId/completions', async (req, res) => {
+    try {
+      const { routineId } = req.params;
+      const { user_id, completion_date, completed } = req.body;
+
+      if (!user_id || !completion_date) {
+        return res.status(400).json({ error: 'user_id y completion_date son requeridos' });
+      }
+
+      const connection = await pool.getConnection();
+
+      if (completed === false || completed === 0) {
+        await connection.execute(
+          'DELETE FROM routine_completions WHERE routine_id = ? AND user_id = ? AND completion_date = ?',
+          [routineId, user_id, completion_date]
+        );
+      } else {
+        await connection.execute(
+          `INSERT INTO routine_completions (id, routine_id, user_id, completion_date, is_completed)
+           VALUES (UUID(), ?, ?, ?, 1)
+           ON DUPLICATE KEY UPDATE is_completed = VALUES(is_completed)`,
+          [routineId, user_id, completion_date]
+        );
+      }
+
+      connection.release();
+      res.status(200).json({ message: 'Estado diario de rutina actualizado' });
+    } catch (error) {
       res.status(500).json({ error: error.message });
     }
   });

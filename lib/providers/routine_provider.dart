@@ -5,12 +5,45 @@ import 'package:zen/services/services.dart';
 
 class RoutineProvider extends ChangeNotifier {
   List<Routine> _routines = [];
+  final Map<String, Set<String>> _completedDatesByRoutine = {};
   bool _isLoading = false;
   String? _currentUserId;
 
   // Getters
   List<Routine> get routines => _routines;
   bool get isLoading => _isLoading;
+
+  String _normalizeDate(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  bool isRoutineCompletedOnDate(String routineId, DateTime date) {
+    final normalized = _normalizeDate(date);
+    return _completedDatesByRoutine[routineId]?.contains(normalized) ?? false;
+  }
+
+  int getCompletedCountForWeek(DateTime referenceDate) {
+    final current = DateTime(referenceDate.year, referenceDate.month, referenceDate.day);
+    final weekStart = current.subtract(Duration(days: current.weekday - 1));
+    final weekEnd = weekStart.add(const Duration(days: 6));
+
+    int count = 0;
+    for (final dates in _completedDatesByRoutine.values) {
+      for (final dateString in dates) {
+        final parts = dateString.split('-');
+        if (parts.length != 3) continue;
+        final d = DateTime(
+          int.parse(parts[0]),
+          int.parse(parts[1]),
+          int.parse(parts[2]),
+        );
+        if (!d.isBefore(weekStart) && !d.isAfter(weekEnd)) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
 
   // Establecer usuario actual
   void setCurrentUser(String userId) {
@@ -75,6 +108,17 @@ class RoutineProvider extends ChangeNotifier {
           steps: steps,
         );
       }).toList();
+
+      final completions = await ApiService.getRoutineCompletions(userId: userId);
+      _completedDatesByRoutine.clear();
+      for (final c in completions) {
+        final routineId = c['routine_id']?.toString();
+        final rawDate = c['completion_date']?.toString();
+        if (routineId == null || rawDate == null) continue;
+        final normalized = rawDate.contains('T') ? rawDate.split('T')[0] : rawDate;
+        _completedDatesByRoutine.putIfAbsent(routineId, () => <String>{}).add(normalized);
+      }
+
       debugPrint('✅ ${_routines.length} rutinas cargadas desde API');
     } catch (e) {
       debugPrint('❌ Error loading routines from API: $e');
@@ -246,9 +290,50 @@ class RoutineProvider extends ChangeNotifier {
     return _routines.where((r) => r.isActive).toList();
   }
 
+  Future<void> setRoutineCompletedForDate({
+    required String routineId,
+    required DateTime date,
+    required bool completed,
+  }) async {
+    if (_currentUserId == null) {
+      throw Exception('Usuario no autenticado');
+    }
+
+    final ok = await ApiService.setRoutineCompletion(
+      routineId: routineId,
+      userId: _currentUserId!,
+      completionDate: date,
+      completed: completed,
+    );
+
+    if (!ok) {
+      throw Exception('No se pudo actualizar el estado de la rutina');
+    }
+
+    final normalized = _normalizeDate(date);
+    final set = _completedDatesByRoutine.putIfAbsent(routineId, () => <String>{});
+    if (completed) {
+      set.add(normalized);
+    } else {
+      set.remove(normalized);
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> toggleRoutineCompletedForDate(String routineId, DateTime date) async {
+    final current = isRoutineCompletedOnDate(routineId, date);
+    await setRoutineCompletedForDate(
+      routineId: routineId,
+      date: date,
+      completed: !current,
+    );
+  }
+
   // Limpiar todas las rutinas
   void clear() {
     _routines.clear();
+    _completedDatesByRoutine.clear();
   }
 
   // Parsear frecuencia

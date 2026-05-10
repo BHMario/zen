@@ -657,6 +657,67 @@ class ApiService {
     }
   }
 
+  static Future<List<Map<String, dynamic>>> getRoutineCompletions({
+    required String userId,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.get(
+        Uri.parse('$baseUrl/routines/$userId/completions'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((e) => e as Map<String, dynamic>).toList();
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
+        throw Exception('Sesión expirada');
+      }
+
+      throw Exception('Error obteniendo completados de rutinas');
+    } catch (e) {
+      debugPrint('❌ Error obteniendo completados de rutinas: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> setRoutineCompletion({
+    required String routineId,
+    required String userId,
+    required DateTime completionDate,
+    required bool completed,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final dateString =
+          '${completionDate.year.toString().padLeft(4, '0')}-${completionDate.month.toString().padLeft(2, '0')}-${completionDate.day.toString().padLeft(2, '0')}';
+
+      final response = await _client.post(
+        Uri.parse('$baseUrl/routines/$routineId/completions'),
+        headers: headers,
+        body: jsonEncode({
+          'user_id': userId,
+          'completion_date': dateString,
+          'completed': completed,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
+        throw Exception('Sesión expirada');
+      }
+
+      debugPrint('❌ Error guardando completado de rutina: ${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('❌ Error guardando completado de rutina: $e');
+      return false;
+    }
+  }
+
   // ==================== GOALS ====================
 
   static Future<List<Map<String, dynamic>>> getGoals({String? userId}) async {

@@ -54,6 +54,26 @@ pool.getConnection().then(async conn => {
     }
   }
 
+  try {
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS routine_completions (
+        id VARCHAR(36) PRIMARY KEY,
+        routine_id VARCHAR(36) NOT NULL,
+        user_id VARCHAR(36) NOT NULL,
+        completion_date DATE NOT NULL,
+        is_completed BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_routine_completion (routine_id, user_id, completion_date),
+        FOREIGN KEY (routine_id) REFERENCES routines(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_user_date (user_id, completion_date)
+      )
+    `);
+  } catch (e) {
+    console.error('⚠️ Error creando routine_completions:', e.message);
+  }
+
   conn.release();
   console.log('✅ Migraciones completadas');
 }).catch(err => {

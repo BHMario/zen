@@ -248,6 +248,33 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  Future<void> _toggleRoutineComplete(Routine routine) async {
+    final provider = context.read<RoutineProvider>();
+    try {
+      final wasCompleted =
+          provider.isRoutineCompletedOnDate(routine.id, _selectedDate);
+      await provider.toggleRoutineCompletedForDate(routine.id, _selectedDate);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              wasCompleted
+                  ? 'Rutina marcada como pendiente para este día'
+                  : 'Rutina completada para este día',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error actualizando rutina: $e')),
+        );
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -524,6 +551,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           routineProvider,
           goalProvider,
         );
+        final weeklyRoutinesDone =
+            routineProvider.getCompletedCountForWeek(_selectedDate);
 
         debugPrint('📅 Items para ${_selectedDate.toIso8601String()}: ${items.length}');
 
@@ -545,6 +574,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       Text(
                         DateTimeUtils.getRelativeDate(_selectedDate),
                         style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Rutinas completadas esta semana: $weeklyRoutinesDone',
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelSmall
+                            ?.copyWith(color: ZenTheme.successColor),
                       ),
                     ],
                   ),
@@ -598,6 +635,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     final itemDescription = _getItemDescription(item);
                     final isTask = item is Task;
                     final isGoal = item is Goal;
+                    final isRoutine = item is Routine;
+                    final isRoutineCompletedToday = isRoutine
+                        ? routineProvider.isRoutineCompletedOnDate(
+                            item.id,
+                            _selectedDate,
+                          )
+                        : false;
 
                     return InkWell(
                       borderRadius: BorderRadius.circular(8),
@@ -642,7 +686,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                         style: Theme.of(context)
                                             .textTheme
                                             .bodyMedium
-                                            ?.copyWith(fontWeight: FontWeight.w600),
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            decoration: isRoutineCompletedToday
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                          ),
                                       ),
                                       if (itemDescription != null)
                                         Text(
@@ -698,6 +747,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                     tooltip: 'Actualizar progreso',
                                     onPressed: () => _updateGoalProgress(item),
                                     icon: const Icon(Icons.trending_up),
+                                  ),
+                                if (isRoutine)
+                                  IconButton(
+                                    tooltip: isRoutineCompletedToday
+                                        ? 'Marcar pendiente hoy'
+                                        : 'Marcar completada hoy',
+                                    onPressed: () => _toggleRoutineComplete(item),
+                                    icon: Icon(
+                                      isRoutineCompletedToday
+                                          ? Icons.check_circle
+                                          : Icons.check_circle_outline,
+                                      color: isRoutineCompletedToday
+                                          ? ZenTheme.successColor
+                                          : null,
+                                    ),
                                   ),
                               ],
                             ),
@@ -887,6 +951,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
         backgroundColor: Colors.blue.withValues(alpha: 0.2),
       ));
     } else if (item is Routine) {
+      final routineProvider = context.read<RoutineProvider>();
+      final completedToday =
+          routineProvider.isRoutineCompletedOnDate(item.id, _selectedDate);
+
       chips.add(Chip(
         label: Text(
           _getRoutineFrequencyLabel(item),
@@ -894,6 +962,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         visualDensity: VisualDensity.compact,
         backgroundColor: Colors.purple.withValues(alpha: 0.2),
+      ));
+
+      chips.add(Chip(
+        label: Text(
+          completedToday ? 'Completada hoy' : 'Pendiente hoy',
+          style: const TextStyle(fontSize: 10),
+        ),
+        visualDensity: VisualDensity.compact,
+        backgroundColor: completedToday
+            ? Colors.green.withValues(alpha: 0.2)
+            : Colors.grey.withValues(alpha: 0.2),
       ));
     } else if (item is Goal) {
       chips.add(Chip(

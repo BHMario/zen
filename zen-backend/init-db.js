@@ -147,6 +147,24 @@ const initializeDatabase = async () => {
     }
     console.log('✅ Tabla routines creada');
 
+    // Tabla de completados diarios de rutinas
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS routine_completions (
+        id VARCHAR(36) PRIMARY KEY,
+        routine_id VARCHAR(36) NOT NULL,
+        user_id VARCHAR(36) NOT NULL,
+        completion_date DATE NOT NULL,
+        is_completed BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_routine_completion (routine_id, user_id, completion_date),
+        FOREIGN KEY (routine_id) REFERENCES routines(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_user_date (user_id, completion_date)
+      );
+    `);
+    console.log('✅ Tabla routine_completions creada');
+
     // Tabla de objetivos
     await connection.query(`
       CREATE TABLE IF NOT EXISTS goals (

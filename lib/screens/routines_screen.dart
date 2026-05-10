@@ -87,6 +87,33 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
     }
   }
 
+  Future<void> _toggleRoutineToday(Routine routine) async {
+    final provider = context.read<RoutineProvider>();
+    try {
+      final today = DateTime.now();
+      final wasCompleted = provider.isRoutineCompletedOnDate(routine.id, today);
+      await provider.toggleRoutineCompletedForDate(routine.id, today);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              wasCompleted
+                  ? 'Rutina marcada pendiente para hoy'
+                  : 'Rutina completada para hoy',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al actualizar rutina: $e')),
+        );
+      }
+    }
+  }
+
   String _repeatLabel(int days) {
     if (days == 1) return 'Todos los días';
     if (days == 7) return 'Cada semana';
@@ -133,12 +160,40 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
 
           final active = routines.where((r) => r.isActive).toList();
           final inactive = routines.where((r) => !r.isActive).toList();
+          final weeklyDone = provider.getCompletedCountForWeek(DateTime.now());
 
           return RefreshIndicator(
             onRefresh: _loadRoutines,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
               children: [
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: ZenTheme.successColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: ZenTheme.successColor.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.emoji_events_outlined, color: ZenTheme.successColor),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Rutinas completadas esta semana: $weeklyDone',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(
+                              color: ZenTheme.successColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
                 if (active.isNotEmpty) ...[
                   _sectionHeader(context, 'Activas', active.length),
                   const SizedBox(height: 8),
@@ -188,6 +243,11 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
     } catch (_) {
       routineColor = ZenTheme.secondaryColor;
     }
+    final isCompletedToday =
+        context.watch<RoutineProvider>().isRoutineCompletedOnDate(
+              routine.id,
+              DateTime.now(),
+            );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -298,36 +358,55 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
                   ],
                 ],
               ),
-              trailing: PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                onSelected: (value) {
-                  if (value == 'edit') _showEditDialog(routine);
-                  if (value == 'delete') _confirmDelete(routine);
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit_outlined, size: 18),
-                        SizedBox(width: 8),
-                        Text('Editar'),
-                      ],
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: isCompletedToday
+                        ? 'Marcar pendiente hoy'
+                        : 'Marcar completada hoy',
+                    onPressed: () => _toggleRoutineToday(routine),
+                    icon: Icon(
+                      isCompletedToday
+                          ? Icons.check_circle
+                          : Icons.check_circle_outline,
+                      color: isCompletedToday
+                          ? ZenTheme.successColor
+                          : ZenTheme.textLight,
                     ),
                   ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete_outline,
-                            size: 18, color: ZenTheme.errorColor),
-                        SizedBox(width: 8),
-                        Text('Eliminar',
-                            style: TextStyle(color: ZenTheme.errorColor)),
-                      ],
-                    ),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    onSelected: (value) {
+                      if (value == 'edit') _showEditDialog(routine);
+                      if (value == 'delete') _confirmDelete(routine);
+                    },
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 18),
+                            SizedBox(width: 8),
+                            Text('Editar'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline,
+                                size: 18, color: ZenTheme.errorColor),
+                            SizedBox(width: 8),
+                            Text('Eliminar',
+                                style: TextStyle(color: ZenTheme.errorColor)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
