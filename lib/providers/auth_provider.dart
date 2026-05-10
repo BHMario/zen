@@ -5,7 +5,7 @@ import 'package:zen/services/services.dart';
 class AuthProvider extends ChangeNotifier {
   User? _currentUser;
   bool _isLoading = false;
-  String? _errorMessage;
+  String? _errorMessage = null;
   bool _isLogin = true; // true = login, false = register
 
   // Getters
@@ -181,6 +181,76 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> deleteAccount() async {
+    if (_currentUser == null) return false;
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final success = await ApiService.deleteAccount(_currentUser!.id);
+      if (success) {
+        await logout();
+        return true;
+      } else {
+        _errorMessage = 'No se pudo eliminar la cuenta';
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updatePrivacySettings({
+    bool? shareAnalytics,
+    bool? showActiveStatus,
+    bool? marketingEmails,
+    bool? profilePrivate,
+  }) async {
+    if (_currentUser == null) return false;
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final Map<String, dynamic> settings = {};
+      if (shareAnalytics != null) settings['share_analytics'] = shareAnalytics;
+      if (showActiveStatus != null) settings['show_active_status'] = showActiveStatus;
+      if (marketingEmails != null) settings['marketing_emails'] = marketingEmails;
+      if (profilePrivate != null) settings['profile_private'] = profilePrivate;
+
+      final result = await ApiService.updateUserSettings(
+        userId: _currentUser!.id,
+        settings: settings,
+      );
+
+      if (result.containsKey('error')) {
+        _errorMessage = result['error'];
+        return false;
+      } else {
+        _currentUser = _currentUser!.copyWith(
+          shareAnalytics: shareAnalytics,
+          showActiveStatus: showActiveStatus,
+          marketingEmails: marketingEmails,
+          profilePrivate: profilePrivate,
+        );
+        _errorMessage = null;
+        return true;
+      }
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> logout() async {
     _isLoading = true;
     notifyListeners();
@@ -243,12 +313,16 @@ class AuthProvider extends ChangeNotifier {
     try {
       debugPrint('🔄 Sincronizando datos para usuario: $userId');
       
-      // Cargar datos del usuario incluyendo teléfono
+      // Cargar datos del usuario incluyendo teléfono y privacidad
       try {
         final userDataResult = await ApiService.getUserById(userId);
-        if (userDataResult != null && userDataResult.containsKey('phone')) {
+        if (userDataResult != null) {
           _currentUser = _currentUser?.copyWith(
             phone: userDataResult['phone'] as String?,
+            shareAnalytics: userDataResult['share_analytics'] == 1 || userDataResult['share_analytics'] == true,
+            showActiveStatus: userDataResult['show_active_status'] == 1 || userDataResult['show_active_status'] == true,
+            marketingEmails: userDataResult['marketing_emails'] == 1 || userDataResult['marketing_emails'] == true,
+            profilePrivate: userDataResult['profile_private'] == 1 || userDataResult['profile_private'] == true,
           );
         }
       } catch (e) {

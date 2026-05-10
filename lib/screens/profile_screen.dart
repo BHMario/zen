@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:zen/providers/providers.dart';
 import 'package:zen/theme/zen_theme.dart';
 import 'package:zen/utils/utils.dart';
+import 'privacy_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -198,9 +199,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               size: 16,
                             ),
                             onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Funcionalidad en desarrollo'),
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => PrivacyScreen(),
                                 ),
                               );
                             },

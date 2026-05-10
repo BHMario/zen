@@ -5,3 +5,4 @@ export 'analytics_screen.dart';
 export 'projects_screen.dart';
 export 'profile_screen.dart';
 export 'project_details_screen.dart';
+export 'privacy_screen.dart';
