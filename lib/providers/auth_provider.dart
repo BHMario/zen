@@ -147,6 +147,40 @@ class AuthProvider extends ChangeNotifier {
     };
   }
 
+  // Cambiar contraseña
+  Future<bool> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    if (_currentUser == null) return false;
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await ApiService.changePassword(
+        userId: _currentUser!.id,
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+      );
+
+      if (result.containsKey('error')) {
+        _errorMessage = result['error'];
+        return false;
+      } else {
+        _errorMessage = null;
+        return true;
+      }
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> logout() async {
     _isLoading = true;
     notifyListeners();

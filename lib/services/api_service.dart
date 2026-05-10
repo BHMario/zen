@@ -140,6 +140,39 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> changePassword({
+    required String userId,
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.put(
+        Uri.parse('$baseUrl/users/change-password'),
+        headers: headers,
+        body: jsonEncode({
+          'userId': userId,
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        try {
+          final error = jsonDecode(response.body);
+          return {'error': error['error'] ?? 'Error al cambiar contraseña'};
+        } catch (e) {
+          return {'error': 'Error: ${response.statusCode}'};
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error en changePassword: $e');
+      return {'error': e.toString()};
+    }
+  }
+
   // ==================== TASKS ====================
 
   static Future<List<Map<String, dynamic>>> getTasks({String? userId}) async {
