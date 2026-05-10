@@ -19,6 +19,234 @@ class _CalendarScreenState extends State<CalendarScreen> {
   late DateTime _displayedMonth;
   String _filterType = 'all'; // all, tasks, projects, routines, goals
 
+  Future<void> _toggleTaskComplete(Task task) async {
+    final provider = context.read<TaskProvider>();
+    try {
+      if (task.status == TaskStatus.completed) {
+        await provider.updateTaskStatus(task.id, TaskStatus.pending);
+      } else {
+        await provider.completeTask(task.id);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              task.status == TaskStatus.completed
+                  ? 'Tarea reactivada'
+                  : 'Tarea completada',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error actualizando tarea: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteTask(Task task) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar tarea'),
+        content: Text('¿Eliminar "${task.title}"? Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: ZenTheme.errorColor),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await context.read<TaskProvider>().deleteTask(task.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tarea eliminada')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error eliminando tarea: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _editTask(Task task) async {
+    final titleController = TextEditingController(text: task.title);
+    final descController = TextEditingController(text: task.description ?? '');
+    TaskPriority selectedPriority = task.priority;
+    DateTime selectedDate = task.dueDate;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocalState) => AlertDialog(
+            title: const Text('Editar tarea'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(labelText: 'Título'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(labelText: 'Descripción'),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<TaskPriority>(
+                    value: selectedPriority,
+                    decoration: const InputDecoration(labelText: 'Prioridad'),
+                    items: TaskPriority.values
+                        .map(
+                          (p) => DropdownMenuItem(
+                            value: p,
+                            child: Text(p.name.toUpperCase()),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setLocalState(() => selectedPriority = value);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Fecha límite'),
+                    subtitle: Text(DateFormat('dd/MM/yyyy').format(selectedDate)),
+                    trailing: const Icon(Icons.calendar_today_outlined),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: ctx,
+                        initialDate: selectedDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2100),
+                      );
+                      if (picked != null) {
+                        setLocalState(() => selectedDate = picked);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Guardar'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (saved != true) {
+      titleController.dispose();
+      descController.dispose();
+      return;
+    }
+
+    try {
+      final updatedTask = task.copyWith(
+        title: titleController.text.trim(),
+        description: descController.text.trim().isEmpty
+            ? null
+            : descController.text.trim(),
+        dueDate: selectedDate,
+        priority: selectedPriority,
+        updatedAt: DateTime.now(),
+      );
+      await context.read<TaskProvider>().updateTask(updatedTask);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tarea actualizada')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error actualizando tarea: $e')),
+        );
+      }
+    } finally {
+      titleController.dispose();
+      descController.dispose();
+    }
+  }
+
+  Future<void> _updateGoalProgress(Goal goal) async {
+    final controller = TextEditingController(text: goal.currentValue.toString());
+    final updated = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Actualizar progreso'),
+        content: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: 'Valor actual (${goal.unit})',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final parsed = double.tryParse(controller.text.trim());
+              Navigator.of(ctx).pop(parsed);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+    if (updated == null) return;
+
+    try {
+      await context.read<GoalProvider>().updateProgress(goal.id, updated);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Progreso actualizado')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error actualizando progreso: $e')),
+        );
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -149,7 +377,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget _buildCalendarGrid(BuildContext context) {
     final firstDay =
         DateTime(_displayedMonth.year, _displayedMonth.month, 1);
-    final lastDay = DateTime(_displayedMonth.year, _displayedMonth.month + 1, 0);
     final firstWeekday = firstDay.weekday;
 
     // Calcular la primera fecha a mostrar (puede ser del mes anterior)
@@ -368,67 +595,119 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     final itemType = _getItemType(item);
                     final itemTitle = _getItemTitle(item);
                     final itemDescription = _getItemDescription(item);
+                    final isTask = item is Task;
+                    final isGoal = item is Goal;
 
-                    return Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: itemColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: itemColor.withValues(alpha: 0.3)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 24,
-                                decoration: BoxDecoration(
-                                  color: itemColor,
-                                  borderRadius: BorderRadius.circular(2),
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: isTask
+                          ? () {
+                              TaskDetailSheet.show(
+                                context,
+                                item,
+                                onEdit: () => _editTask(item),
+                                onDelete: () => _deleteTask(item),
+                                onToggleComplete: () => _toggleTaskComplete(item),
+                              );
+                            }
+                          : null,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: itemColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: itemColor.withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 4,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    color: itemColor,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      itemTitle,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(fontWeight: FontWeight.w600),
-                                    ),
-                                    if (itemDescription != null)
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
                                       Text(
-                                        itemDescription,
+                                        itemTitle,
                                         style: Theme.of(context)
                                             .textTheme
-                                            .bodySmall,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
+                                            .bodyMedium
+                                            ?.copyWith(fontWeight: FontWeight.w600),
                                       ),
-                                  ],
+                                      if (itemDescription != null)
+                                        Text(
+                                          itemDescription,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              Chip(
-                                label: Text(
-                                  itemType,
-                                  style: const TextStyle(fontSize: 10),
+                                Chip(
+                                  label: Text(
+                                    itemType,
+                                    style: const TextStyle(fontSize: 10),
+                                  ),
+                                  visualDensity: VisualDensity.compact,
                                 ),
-                                visualDensity: VisualDensity.compact,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 4,
-                            children: _getItemChips(item, context),
-                          ),
-                        ],
+                                if (isTask)
+                                  PopupMenuButton<String>(
+                                    onSelected: (value) {
+                                      if (value == 'complete') {
+                                        _toggleTaskComplete(item);
+                                      } else if (value == 'edit') {
+                                        _editTask(item);
+                                      } else if (value == 'delete') {
+                                        _deleteTask(item);
+                                      }
+                                    },
+                                    itemBuilder: (ctx) => [
+                                      PopupMenuItem(
+                                        value: 'complete',
+                                        child: Text(
+                                          item.status == TaskStatus.completed
+                                              ? 'Marcar pendiente'
+                                              : 'Marcar completada',
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'edit',
+                                        child: Text('Editar'),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'delete',
+                                        child: Text('Eliminar'),
+                                      ),
+                                    ],
+                                  ),
+                                if (isGoal)
+                                  IconButton(
+                                    tooltip: 'Actualizar progreso',
+                                    onPressed: () => _updateGoalProgress(item),
+                                    icon: const Icon(Icons.trending_up),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: _getItemChips(item, context),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },

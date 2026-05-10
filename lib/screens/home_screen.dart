@@ -4,6 +4,7 @@ import 'package:zen/providers/providers.dart';
 import 'package:zen/screens/calendar_screen.dart';
 import 'package:zen/screens/analytics_screen.dart';
 import 'package:zen/screens/routines_screen.dart';
+import 'package:zen/screens/goals_screen.dart';
 import 'package:zen/screens/profile_screen.dart';
 import 'package:zen/services/services.dart';
 
@@ -23,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const CalendarScreen(),
     const AnalyticsScreen(),
     const RoutinesScreen(),
+    const GoalsScreen(),
     const ProfileScreen(),
   ];
 
@@ -54,6 +56,8 @@ class _HomeScreenState extends State<HomeScreen> {
         authProvider: authProvider,
         taskProvider: context.read<TaskProvider>(),
         projectProvider: context.read<ProjectProvider>(),
+        routineProvider: context.read<RoutineProvider>(),
+        goalProvider: context.read<GoalProvider>(),
         reminderProvider: context.read<ReminderProvider>(),
         analyticsProvider: context.read<AnalyticsProvider>(),
       );
@@ -142,6 +146,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.repeat_outlined),
             selectedIcon: Icon(Icons.repeat),
             label: 'Rutinas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.flag_outlined),
+            selectedIcon: Icon(Icons.flag),
+            label: 'Objetivos',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),

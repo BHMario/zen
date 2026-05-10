@@ -43,6 +43,21 @@ class RoutineProvider extends ChangeNotifier {
           }
         }
 
+        List<String> steps = [];
+        if (routineData['steps'] != null) {
+          final stepsData = routineData['steps'];
+          if (stepsData is String) {
+            try {
+              final parsed = jsonDecode(stepsData) as List;
+              steps = parsed.map((e) => e.toString()).toList();
+            } catch (_) {
+              steps = [];
+            }
+          } else if (stepsData is List) {
+            steps = stepsData.map((e) => e.toString()).toList();
+          }
+        }
+
         return Routine(
           id: routineData['id'] as String,
           name: routineData['title'] as String? ?? routineData['name'] as String,
@@ -53,10 +68,11 @@ class RoutineProvider extends ChangeNotifier {
           createdBy: userId,
           createdAt: DateTime.parse(routineData['created_at'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
           updatedAt: DateTime.parse(routineData['updated_at'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
-          isActive: routineData['is_active'] as bool? ?? true,
+          isActive: routineData['is_active'] == 1 || routineData['is_active'] == true,
           scheduleTime: routineData['schedule_time'] as String?,
-          durationMinutes: routineData['duration_minutes'] as int?,
-          repeatEveryDays: routineData['repeat_every_days'] as int? ?? 1,
+          durationMinutes: (routineData['duration_minutes'] as num?)?.toInt(),
+          repeatEveryDays: (routineData['repeat_every_days'] as num?)?.toInt() ?? 1,
+          steps: steps,
         );
       }).toList();
       debugPrint('✅ ${_routines.length} rutinas cargadas desde API');
@@ -84,6 +100,10 @@ class RoutineProvider extends ChangeNotifier {
         'color': routine.color,
         'created_by': routine.createdBy,
         'repeat_every_days': routine.repeatEveryDays,
+        'schedule_time': routine.scheduleTime,
+        'is_active': routine.isActive,
+        'duration_minutes': routine.durationMinutes,
+        'steps': routine.steps,
       });
 
       if (!result.containsKey('error')) {
@@ -111,6 +131,7 @@ class RoutineProvider extends ChangeNotifier {
     String? scheduleTime,
     int? durationMinutes,
     int repeatEveryDays = 1,
+    List<String> steps = const [],
   }) async {
     String actualUserId;
     if (userId != null) {
@@ -135,6 +156,7 @@ class RoutineProvider extends ChangeNotifier {
       scheduleTime: scheduleTime,
       durationMinutes: durationMinutes,
       repeatEveryDays: repeatEveryDays,
+      steps: steps,
     );
 
     await createRoutine(routine);
@@ -152,6 +174,7 @@ class RoutineProvider extends ChangeNotifier {
         'schedule_time': routine.scheduleTime,
         'duration_minutes': routine.durationMinutes,
         'repeat_every_days': routine.repeatEveryDays,
+        'steps': routine.steps,
       });
 
       if (!result.containsKey('error')) {
@@ -189,11 +212,20 @@ class RoutineProvider extends ChangeNotifier {
     }
   }
 
-  // Obtener rutinas por fecha (para calendario)
+  // Obtener rutinas por fecha (considera repeatEveryDays desde createdAt)
   List<Routine> getRoutinesByDate(DateTime date) {
-    return _routines
-        .where((routine) => routine.isActive)
-        .toList();
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    return _routines.where((routine) {
+      if (!routine.isActive) return false;
+      final normalizedCreated = DateTime(
+        routine.createdAt.year,
+        routine.createdAt.month,
+        routine.createdAt.day,
+      );
+      if (normalizedDate.isBefore(normalizedCreated)) return false;
+      final dayDiff = normalizedDate.difference(normalizedCreated).inDays;
+      return dayDiff % routine.repeatEveryDays == 0;
+    }).toList();
   }
 
   // Obtener rutinas activas

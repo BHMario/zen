@@ -619,11 +619,48 @@ class ApiService {
         _handleUnauthorized();
         throw Exception('Sesión expirada');
       } else {
+        debugPrint('❌ Error creando objetivo: ${response.body}');
         return {'error': 'Error creando objetivo'};
       }
     } catch (e) {
       debugPrint('❌ Error creando objetivo: $e');
       return {'error': e.toString()};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateGoal(String goalId, Map<String, dynamic> data) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.put(
+        Uri.parse('$baseUrl/goals/$goalId'),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
+        throw Exception('Sesión expirada');
+      } else {
+        return {'error': 'Error actualizando objetivo'};
+      }
+    } catch (e) {
+      debugPrint('❌ Error actualizando objetivo: $e');
+      return {'error': e.toString()};
+    }
+  }
+
+  static Future<bool> deleteGoal(String goalId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.delete(
+        Uri.parse('$baseUrl/goals/$goalId'),
+        headers: headers,
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('❌ Error eliminando objetivo: $e');
+      return false;
     }
   }
 

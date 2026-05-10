@@ -19,6 +19,7 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
   late TextEditingController _repeatDaysController;
+  late TextEditingController _stepsController;
   late String _selectedColor;
   TimeOfDay? _scheduleTime;
   late bool _isActive;
@@ -42,6 +43,9 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
         TextEditingController(text: widget.routine.description ?? '');
     _repeatDaysController =
         TextEditingController(text: widget.routine.repeatEveryDays.toString());
+    _stepsController = TextEditingController(
+      text: widget.routine.steps.join('\n'),
+    );
     _selectedColor = widget.routine.color;
     _isActive = widget.routine.isActive;
 
@@ -61,6 +65,7 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
     _nameController.dispose();
     _descriptionController.dispose();
     _repeatDaysController.dispose();
+    _stepsController.dispose();
     super.dispose();
   }
 
@@ -68,6 +73,11 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
     if (!_formKey.currentState!.validate()) return;
 
     final repeatDays = int.tryParse(_repeatDaysController.text.trim()) ?? 1;
+    final steps = _stepsController.text
+      .split('\n')
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
     final scheduleTimeStr = _scheduleTime != null
         ? '${_scheduleTime!.hour.toString().padLeft(2, '0')}:${_scheduleTime!.minute.toString().padLeft(2, '0')}'
         : null;
@@ -81,6 +91,7 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
       isActive: _isActive,
       scheduleTime: scheduleTimeStr,
       repeatEveryDays: repeatDays,
+      steps: steps,
       updatedAt: DateTime.now(),
     );
 
@@ -185,6 +196,19 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
                     if (n == null || n < 1) return 'Introduce un número mayor a 0';
                     return null;
                   },
+                ),
+                const SizedBox(height: 16),
+
+                // Pasos de la rutina
+                TextFormField(
+                  controller: _stepsController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Pasos (opcional)',
+                    hintText: 'Un paso por línea',
+                    prefixIcon: Icon(Icons.checklist_rtl_outlined),
+                    alignLabelWithHint: true,
+                  ),
                 ),
                 const SizedBox(height: 16),
 

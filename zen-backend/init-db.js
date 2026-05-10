@@ -117,6 +117,10 @@ const initializeDatabase = async () => {
         color VARCHAR(7) DEFAULT '#10B981',
         created_by VARCHAR(36) NOT NULL,
         repeat_every_days INT DEFAULT 1,
+        schedule_time VARCHAR(5) DEFAULT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        duration_minutes INT DEFAULT NULL,
+        steps TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -124,11 +128,20 @@ const initializeDatabase = async () => {
         INDEX idx_user_id (user_id)
       );
     `);
-    // Añadir columna repeat_every_days si no existe (para BDs existentes)
-    try {
-      await connection.query(`ALTER TABLE routines ADD COLUMN IF NOT EXISTS repeat_every_days INT DEFAULT 1;`);
-    } catch (e) {
-      // La columna ya existe o la sintaxis no es compatible, ignorar
+    // Añadir columnas que podrían faltar en BDs existentes
+    const routineAlterCols = [
+      'repeat_every_days INT DEFAULT 1',
+      'schedule_time VARCHAR(5) DEFAULT NULL',
+      'is_active BOOLEAN DEFAULT TRUE',
+      'duration_minutes INT DEFAULT NULL',
+      'steps TEXT',
+    ];
+    for (const col of routineAlterCols) {
+      try {
+        await connection.query(`ALTER TABLE routines ADD COLUMN ${col};`);
+      } catch (e) {
+        // La columna ya existe (ER_DUP_FIELDNAME), ignorar
+      }
     }
     console.log('✅ Tabla routines creada');
 
@@ -140,9 +153,14 @@ const initializeDatabase = async () => {
         title VARCHAR(255) NOT NULL,
         description TEXT,
         category VARCHAR(100),
+        start_date DATE,
         target_date DATE,
+        target_value FLOAT DEFAULT 1,
+        current_value FLOAT DEFAULT 0,
+        unit VARCHAR(50) DEFAULT NULL,
         progress INT DEFAULT 0,
         status VARCHAR(50) DEFAULT 'active',
+        is_completed BOOLEAN DEFAULT FALSE,
         color VARCHAR(7) DEFAULT '#F59E0B',
         created_by VARCHAR(36) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

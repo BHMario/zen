@@ -21,10 +21,14 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   String _selectedType = 'task'; // task, project, routine, goal
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
+  late TextEditingController _goalTargetValueController;
+  late TextEditingController _goalUnitController;
   DateTime? _dueDate;
   DateTime? _projectStartDate;
   DateTime? _projectEndDate;
   TaskPriority _priority = TaskPriority.medium;
+  GoalCategory _goalCategory = GoalCategory.other;
+  GoalTimeframe _goalTimeframe = GoalTimeframe.mediumTerm;
   String _selectedColor = '#6366F1';
   List<String> _selectedLabels = [];
   bool _setReminder = false;
@@ -45,6 +49,8 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     super.initState();
     _titleController = TextEditingController();
     _descriptionController = TextEditingController();
+    _goalTargetValueController = TextEditingController(text: '1');
+    _goalUnitController = TextEditingController(text: 'unidades');
     // Normalizar todas las fechas iniciales para evitar problemas de zona horaria
     _dueDate = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
     _projectStartDate = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
@@ -56,6 +62,8 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _goalTargetValueController.dispose();
+    _goalUnitController.dispose();
     super.dispose();
   }
 
@@ -124,6 +132,36 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
         return 'Alta';
       case TaskPriority.urgent:
         return 'Urgente';
+    }
+  }
+
+  String _goalCategoryLabel(GoalCategory category) {
+    switch (category) {
+      case GoalCategory.health:
+        return 'Salud';
+      case GoalCategory.career:
+        return 'Carrera';
+      case GoalCategory.personal:
+        return 'Personal';
+      case GoalCategory.finance:
+        return 'Finanzas';
+      case GoalCategory.education:
+        return 'Educación';
+      case GoalCategory.relationships:
+        return 'Relaciones';
+      case GoalCategory.other:
+        return 'Otro';
+    }
+  }
+
+  String _goalTimeframeLabel(GoalTimeframe timeframe) {
+    switch (timeframe) {
+      case GoalTimeframe.shortTerm:
+        return 'Corto plazo';
+      case GoalTimeframe.mediumTerm:
+        return 'Medio plazo';
+      case GoalTimeframe.longTerm:
+        return 'Largo plazo';
     }
   }
 
@@ -219,13 +257,17 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
       throw Exception('Usuario no autenticado');
     }
 
+    final parsedTarget = double.tryParse(_goalTargetValueController.text.trim()) ?? 1.0;
+
     await context.read<GoalProvider>().addGoal(
       title: _titleController.text,
       description: _descriptionController.text,
-      category: GoalCategory.other,
-      timeframe: GoalTimeframe.mediumTerm,
+      category: _goalCategory,
+      timeframe: _goalTimeframe,
       startDate: widget.selectedDate,
       targetDate: _dueDate ?? widget.selectedDate.add(const Duration(days: 30)),
+      targetValue: parsedTarget,
+      unit: _goalUnitController.text.trim().isEmpty ? 'unidades' : _goalUnitController.text.trim(),
       color: _selectedColor,
       userId: userId,
     );
@@ -443,6 +485,73 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                   onChanged: (value) {
                     if (value != null) setState(() => _priority = value);
                   },
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Formulario específico de objetivos
+              if (_selectedType == 'goal') ...[
+                DropdownButtonFormField<GoalCategory>(
+                  value: _goalCategory,
+                  decoration: const InputDecoration(
+                    hintText: 'Selecciona categoría',
+                    labelText: 'Categoría',
+                    prefixIcon: Icon(Icons.category_outlined),
+                  ),
+                  items: GoalCategory.values
+                      .map((c) => DropdownMenuItem(
+                            value: c,
+                            child: Text(_goalCategoryLabel(c)),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _goalCategory = value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<GoalTimeframe>(
+                  value: _goalTimeframe,
+                  decoration: const InputDecoration(
+                    hintText: 'Selecciona plazo',
+                    labelText: 'Plazo',
+                    prefixIcon: Icon(Icons.timeline_outlined),
+                  ),
+                  items: GoalTimeframe.values
+                      .map((t) => DropdownMenuItem(
+                            value: t,
+                            child: Text(_goalTimeframeLabel(t)),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _goalTimeframe = value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _goalTargetValueController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Objetivo a alcanzar',
+                          hintText: 'Ej: 100',
+                          prefixIcon: Icon(Icons.flag_outlined),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _goalUnitController,
+                        decoration: const InputDecoration(
+                          labelText: 'Unidad',
+                          hintText: 'km, horas, libros',
+                          prefixIcon: Icon(Icons.straighten_outlined),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
               ],

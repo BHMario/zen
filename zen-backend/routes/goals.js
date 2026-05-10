@@ -24,7 +24,7 @@ module.exports = (pool) => {
   // Crear objetivo
   router.post('/', async (req, res) => {
     try {
-      const { user_id, title, description, category, target_date, progress, status, color, created_by } = req.body;
+      const { user_id, title, description, category, target_date, start_date, progress, status, color, created_by, target_value, current_value, unit, is_completed } = req.body;
       if (!user_id || !title) {
         return res.status(400).json({ error: 'user_id y title son requeridos' });
       }
@@ -34,25 +34,29 @@ module.exports = (pool) => {
 
       const connection = await pool.getConnection();
 
-      // Convert undefined values to null
       const params = [
         goalId,
         user_id,
         title,
         description === undefined ? null : description,
         category === undefined ? null : category,
+        start_date === undefined ? null : start_date,
         target_date === undefined ? null : target_date,
+        target_value !== undefined ? target_value : 1,
+        current_value !== undefined ? current_value : 0,
+        unit === undefined ? null : unit,
         progress || 0,
-        status || 'pending',
+        status || 'active',
         color === undefined ? null : color,
-        created_by || user_id // Usar user_id como default si created_by no se proporciona
+        is_completed !== undefined ? (is_completed ? 1 : 0) : 0,
+        created_by || user_id
       ];
 
       console.log('📝 Creando objetivo con parámetros:', params);
 
       await connection.execute(
-        `INSERT INTO goals (id, user_id, title, description, category, target_date, progress, status, color, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO goals (id, user_id, title, description, category, start_date, target_date, target_value, current_value, unit, progress, status, color, is_completed, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         params
       );
 

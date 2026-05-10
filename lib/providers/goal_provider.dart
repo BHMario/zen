@@ -43,7 +43,7 @@ class GoalProvider extends ChangeNotifier {
           createdBy: userId,
           createdAt: DateTime.parse(goalData['created_at'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
           updatedAt: DateTime.parse(goalData['updated_at'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
-          isCompleted: goalData['is_completed'] as bool? ?? false,
+          isCompleted: goalData['is_completed'] == 1 || goalData['is_completed'] == true,
           color: goalData['color'] as String? ?? '#ec4899',
         );
       }).toList();
@@ -59,13 +59,18 @@ class GoalProvider extends ChangeNotifier {
   // Crear objetivo en API
   Future<void> createGoal(Goal goal) async {
     try {
-      if (_currentUserId == null) {
+      final userIdPayload = _currentUserId ?? goal.createdBy;
+      if (userIdPayload.isEmpty) {
         throw Exception('Usuario no autenticado');
       }
 
+      if (goal.title.trim().isEmpty) {
+        throw Exception('El título del objetivo es obligatorio');
+      }
+
       final result = await ApiService.createGoal({
-        'user_id': _currentUserId!,
-        'title': goal.title,
+        'user_id': userIdPayload,
+        'title': goal.title.trim(),
         'description': goal.description,
         'category': goal.category.toString().split('.').last,
         'start_date': goal.startDate.toUtc().toIso8601String(),
@@ -135,7 +140,13 @@ class GoalProvider extends ChangeNotifier {
 
   // Obtener objetivos por fecha (para calendario)
   List<Goal> getGoalsByDate(DateTime date) {
-    return _goals.where((goal) => !goal.isCompleted).toList();
+    return _goals.where((goal) {
+      if (goal.isCompleted) return false;
+      final d = DateTime(date.year, date.month, date.day);
+      final start = DateTime(goal.startDate.year, goal.startDate.month, goal.startDate.day);
+      final target = DateTime(goal.targetDate.year, goal.targetDate.month, goal.targetDate.day);
+      return !d.isBefore(start) && !d.isAfter(target);
+    }).toList();
   }
 
   // Obtener objetivos activos
@@ -146,6 +157,71 @@ class GoalProvider extends ChangeNotifier {
   // Obtener objetivos completados
   List<Goal> getCompletedGoals() {
     return _goals.where((g) => g.isCompleted).toList();
+  }
+
+  // Actualizar objetivo
+  Future<void> updateGoal(Goal goal) async {
+    try {
+      final result = await ApiService.updateGoal(goal.id, {
+        'title': goal.title,
+        'description': goal.description,
+        'category': goal.category.toString().split('.').last,
+        'target_date': goal.targetDate.toUtc().toIso8601String().split('T')[0],
+        'target_value': goal.targetValue,
+        'current_value': goal.currentValue,
+        'unit': goal.unit,
+        'color': goal.color,
+        'is_completed': goal.isCompleted ? 1 : 0,
+      });
+      if (!result.containsKey('error')) {
+        final idx = _goals.indexWhere((g) => g.id == goal.id);
+        if (idx != -1) _goals[idx] = goal.copyWith(updatedAt: DateTime.now());
+        debugPrint('✅ Objetivo actualizado: ${goal.title}');
+      } else {
+        throw Exception(result['error']);
+      }
+    } catch (e) {
+      debugPrint('❌ Error actualizando objetivo: $e');
+      rethrow;
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  // Eliminar objetivo
+  Future<void> deleteGoal(String goalId) async {
+    try {
+      final success = await ApiService.deleteGoal(goalId);
+      if (success) {
+        _goals.removeWhere((g) => g.id == goalId);
+        debugPrint('✅ Objetivo eliminado: $goalId');
+      } else {
+        throw Exception('Error eliminando objetivo');
+      }
+    } catch (e) {
+      debugPrint('❌ Error eliminando objetivo: $e');
+      rethrow;
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  // Marcar como completado / reactivar
+  Future<void> toggleComplete(Goal goal) async {
+    await updateGoal(goal.copyWith(isCompleted: !goal.isCompleted, updatedAt: DateTime.now()));
+  }
+
+  // Actualizar progreso
+  Future<void> updateProgress(String goalId, double newValue) async {
+    final idx = _goals.indexWhere((g) => g.id == goalId);
+    if (idx == -1) return;
+    final goal = _goals[idx];
+    final updated = goal.copyWith(
+      currentValue: newValue,
+      isCompleted: newValue >= goal.targetValue,
+      updatedAt: DateTime.now(),
+    );
+    await updateGoal(updated);
   }
 
   // Limpiar todos los objetivos

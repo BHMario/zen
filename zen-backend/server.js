@@ -22,10 +22,38 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-// Verificar conexión a BD
-pool.getConnection().then(conn => {
+// Verificar conexión a BD y ejecutar migraciones
+pool.getConnection().then(async conn => {
   console.log('✅ Conectado a MySQL');
+
+  const migrations = [
+    // routines
+    'ALTER TABLE routines ADD COLUMN repeat_every_days INT DEFAULT 1',
+    'ALTER TABLE routines ADD COLUMN schedule_time VARCHAR(5) DEFAULT NULL',
+    'ALTER TABLE routines ADD COLUMN is_active BOOLEAN DEFAULT TRUE',
+    'ALTER TABLE routines ADD COLUMN duration_minutes INT DEFAULT NULL',
+    'ALTER TABLE routines ADD COLUMN steps TEXT',
+    // goals
+    'ALTER TABLE goals ADD COLUMN target_value FLOAT DEFAULT 1',
+    'ALTER TABLE goals ADD COLUMN current_value FLOAT DEFAULT 0',
+    'ALTER TABLE goals ADD COLUMN unit VARCHAR(50) DEFAULT NULL',
+    'ALTER TABLE goals ADD COLUMN start_date DATE',
+    'ALTER TABLE goals ADD COLUMN is_completed BOOLEAN DEFAULT FALSE',
+  ];
+
+  for (const sql of migrations) {
+    try {
+      await conn.execute(sql);
+    } catch (e) {
+      // Ignora error de columna duplicada en bases ya migradas
+      if (e.code !== 'ER_DUP_FIELDNAME') {
+        console.error('⚠️ Error en migración:', e.message);
+      }
+    }
+  }
+
   conn.release();
+  console.log('✅ Migraciones completadas');
 }).catch(err => {
   console.error('❌ Error conectando a MySQL:', err.message);
 });

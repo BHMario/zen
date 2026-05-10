@@ -252,8 +252,50 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
                           routine.scheduleTime!,
                           routineColor,
                         ),
+                      if (routine.steps.isNotEmpty)
+                        _chip(
+                          Icons.format_list_bulleted,
+                          '${routine.steps.length} pasos',
+                          routineColor,
+                        ),
                     ],
                   ),
+                  if (routine.steps.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: routine.steps
+                          .take(3)
+                          .map(
+                            (step) => Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.check_circle_outline,
+                                    size: 14,
+                                    color: routineColor,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      step,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(color: ZenTheme.textLight),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ],
                 ],
               ),
               trailing: PopupMenuButton<String>(

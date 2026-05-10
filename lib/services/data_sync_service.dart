@@ -12,6 +12,8 @@ class DataSyncService {
     required AuthProvider authProvider,
     required TaskProvider taskProvider,
     required ProjectProvider projectProvider,
+    required RoutineProvider routineProvider,
+    required GoalProvider goalProvider,
     required ReminderProvider reminderProvider,
     required AnalyticsProvider analyticsProvider,
   }) async {
@@ -21,6 +23,8 @@ class DataSyncService {
       // Establecer el usuario actual en todos los providers
       taskProvider.setCurrentUser(userId);
       projectProvider.setCurrentUser(userId);
+      routineProvider.setCurrentUser(userId);
+      goalProvider.setCurrentUser(userId);
       reminderProvider.setCurrentUser(userId);
 
       // Cargar tareas desde API
@@ -32,6 +36,16 @@ class DataSyncService {
       debugPrint('📊 Cargando proyectos...');
       await projectProvider.loadUserProjects(userId);
       debugPrint('✅ Proyectos cargados: ${projectProvider.projects.length}');
+
+      // Cargar rutinas desde API
+      debugPrint('🔄 Cargando rutinas...');
+      await routineProvider.loadUserRoutines(userId);
+      debugPrint('✅ Rutinas cargadas: ${routineProvider.routines.length}');
+
+      // Cargar objetivos desde API
+      debugPrint('🎯 Cargando objetivos...');
+      await goalProvider.loadUserGoals(userId);
+      debugPrint('✅ Objetivos cargados: ${goalProvider.goals.length}');
 
       // Cargar recordatorios desde API
       debugPrint('⏰ Cargando recordatorios...');

@@ -16,6 +16,7 @@ class _AddRoutineDialogState extends State<AddRoutineDialog> {
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
   late TextEditingController _repeatDaysController;
+  late TextEditingController _stepsController;
   String _selectedColor = '#8B5CF6';
   TimeOfDay? _scheduleTime;
 
@@ -36,6 +37,7 @@ class _AddRoutineDialogState extends State<AddRoutineDialog> {
     _nameController = TextEditingController();
     _descriptionController = TextEditingController();
     _repeatDaysController = TextEditingController(text: '1');
+    _stepsController = TextEditingController();
   }
 
   @override
@@ -43,6 +45,7 @@ class _AddRoutineDialogState extends State<AddRoutineDialog> {
     _nameController.dispose();
     _descriptionController.dispose();
     _repeatDaysController.dispose();
+    _stepsController.dispose();
     super.dispose();
   }
 
@@ -50,6 +53,11 @@ class _AddRoutineDialogState extends State<AddRoutineDialog> {
     if (!_formKey.currentState!.validate()) return;
 
     final repeatDays = int.tryParse(_repeatDaysController.text.trim()) ?? 1;
+    final steps = _stepsController.text
+      .split('\n')
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
     final scheduleTimeStr = _scheduleTime != null
         ? '${_scheduleTime!.hour.toString().padLeft(2, '0')}:${_scheduleTime!.minute.toString().padLeft(2, '0')}'
         : null;
@@ -68,6 +76,7 @@ class _AddRoutineDialogState extends State<AddRoutineDialog> {
         userId: userId,
         scheduleTime: scheduleTimeStr,
         repeatEveryDays: repeatDays,
+        steps: steps,
       );
 
       if (mounted) {
@@ -167,6 +176,19 @@ class _AddRoutineDialogState extends State<AddRoutineDialog> {
                     if (n == null || n < 1) return 'Introduce un número mayor a 0';
                     return null;
                   },
+                ),
+                const SizedBox(height: 16),
+
+                // Pasos de la rutina
+                TextFormField(
+                  controller: _stepsController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Pasos (opcional)',
+                    hintText: 'Un paso por línea\nEj:\nCalentar 5 min\nSerie principal\nEstiramiento',
+                    prefixIcon: Icon(Icons.checklist_rtl_outlined),
+                    alignLabelWithHint: true,
+                  ),
                 ),
                 const SizedBox(height: 16),
 
