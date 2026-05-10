@@ -25,13 +25,19 @@ class ProjectProvider extends ChangeNotifier {
       final projectList = await ApiService.getProjects(userId: userId);
       
       _projects = projectList.map((projectData) {
-        // Convertir fechas YYYY-MM-DD a DateTime a las 00:00:00 local
+        // Convertir fechas YYYY-MM-DD a DateTime a las 00:00:00 local (sin conversión de zona horaria)
         DateTime? parseDate(String? dateStr) {
           if (dateStr == null) return null;
           try {
-            final parts = dateStr.split('T')[0].split('-');
-            return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+            // Extraer solo la parte de la fecha (YYYY-MM-DD) para evitar desfases horarios
+            final datePart = dateStr.contains('T') ? dateStr.split('T')[0] : dateStr.split(' ')[0];
+            final parts = datePart.split('-');
+            final year = int.parse(parts[0]);
+            final month = int.parse(parts[1]);
+            final day = int.parse(parts[2]);
+            return DateTime(year, month, day);
           } catch (e) {
+            debugPrint('❌ Error parsing project date: $e');
             return null;
           }
         }
@@ -66,14 +72,19 @@ class ProjectProvider extends ChangeNotifier {
       }
 
       // Guardar en MySQL a través de API
-      // Enviar SOLO la fecha en formato YYYY-MM-DD, sin horas
+      // Convertir fechas al formato YYYY-MM-DD (sin tiempo) de forma SEGURA
+      final startDateString = '${project.startDate.year.toString().padLeft(4, '0')}-${project.startDate.month.toString().padLeft(2, '0')}-${project.startDate.day.toString().padLeft(2, '0')}';
+      final endDateString = project.endDate != null
+          ? '${project.endDate!.year.toString().padLeft(4, '0')}-${project.endDate!.month.toString().padLeft(2, '0')}-${project.endDate!.day.toString().padLeft(2, '0')}'
+          : null;
+
       final result = await ApiService.createProject(
         userId: _currentUserId!,
         name: project.name,
         description: project.description,
         color: project.color,
-        startDate: project.startDate.toString().split(' ')[0],
-        endDate: project.endDate != null ? project.endDate!.toString().split(' ')[0] : null,
+        startDate: startDateString,
+        endDate: endDateString,
         status: project.status.toString().split('.').last,
         createdBy: project.createdBy,
       );
@@ -143,8 +154,13 @@ class ProjectProvider extends ChangeNotifier {
         throw Exception('Usuario no autenticado');
       }
 
+      // Convertir fechas al formato YYYY-MM-DD (sin tiempo)
+      final startDateString = '${project.startDate.year.toString().padLeft(4, '0')}-${project.startDate.month.toString().padLeft(2, '0')}-${project.startDate.day.toString().padLeft(2, '0')}';
+      final endDateString = project.endDate != null
+          ? '${project.endDate!.year.toString().padLeft(4, '0')}-${project.endDate!.month.toString().padLeft(2, '0')}-${project.endDate!.day.toString().padLeft(2, '0')}'
+          : null;
+
       // Actualizar en MySQL a través de API
-      // Enviar SOLO la fecha en formato YYYY-MM-DD, sin horas
       final result = await ApiService.updateProject(
         projectId: project.id,
         updates: {
@@ -152,8 +168,8 @@ class ProjectProvider extends ChangeNotifier {
           'description': project.description,
           'color': project.color,
           'status': project.status.toString().split('.').last,
-          'start_date': project.startDate.toString().split(' ')[0],
-          'end_date': project.endDate != null ? project.endDate!.toString().split(' ')[0] : null,
+          'start_date': startDateString,
+          'end_date': endDateString,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         },
       );
@@ -215,28 +231,23 @@ class ProjectProvider extends ChangeNotifier {
     return _projects.where((p) => p.status == ProjectStatus.completed).toList();
   }
 
-  // Obtener proyectos por fecha (para calendario)
   List<Project> getProjectsByDate(DateTime date) {
-    // Convertir fecha local a UTC para comparación consistente (igual que tareas)
-    final dateUtc = date.toUtc();
-    // Obtener medianoche UTC de ese día
-    final normalizedDate = DateTime.utc(dateUtc.year, dateUtc.month, dateUtc.day);
+    // Normalizar la fecha a medianoche local para comparación
+    final normalizedDate = DateTime(date.year, date.month, date.day);
     
     return _projects
         .where((project) {
-          final startDateUtc = project.startDate.toUtc();
-          final startMatches = startDateUtc.year == normalizedDate.year &&
-              startDateUtc.month == normalizedDate.month &&
-              startDateUtc.day == normalizedDate.day;
+          // Normalizar fechas del proyecto
+          final projectStart = DateTime(project.startDate.year, project.startDate.month, project.startDate.day);
+          final projectEnd = project.endDate != null
+              ? DateTime(project.endDate!.year, project.endDate!.month, project.endDate!.day)
+              : null;
           
-          final endDateUtc = project.endDate?.toUtc();
-          final endMatches = endDateUtc != null &&
-              endDateUtc.year == normalizedDate.year &&
-              endDateUtc.month == normalizedDate.month &&
-              endDateUtc.day == normalizedDate.day;
+          // Mostrar proyecto SOLO en la fecha de inicio o en la fecha de fin
+          final isStart = normalizedDate.isAtSameMomentAs(projectStart);
+          final isEnd = projectEnd != null && normalizedDate.isAtSameMomentAs(projectEnd);
           
-          // Mostrar el proyecto si coincide con fecha de inicio O fecha de fin
-          return startMatches || endMatches;
+          return isStart || isEnd;
         })
         .toList();
   }

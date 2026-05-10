@@ -7,3 +7,5 @@ export 'projects_screen.dart';
 export 'profile_screen.dart';
 export 'routines_screen.dart';
 export 'goals_screen.dart';
+export 'project_details_screen.dart';
+export 'privacy_screen.dart';

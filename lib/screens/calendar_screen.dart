@@ -275,22 +275,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ],
       ),
       body: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Selector de mes
-              _buildMonthSelector(context),
-              const Divider(),
-              // Filtros
-              _buildFilterBar(context),
-              const SizedBox(height: 12),
-              // Calendario
-              _buildCalendarGrid(context),
-              const SizedBox(height: 24),
-              // Items del día seleccionado
-              _buildSelectedDayItems(context),
-              const SizedBox(height: 24),
-            ],
-          ),
+        child: Column(
+          children: [
+            // Selector de mes
+            _buildMonthSelector(context),
+            const Divider(),
+            // Filtros
+            _buildFilterBar(context),
+            const SizedBox(height: 12),
+            // Calendario
+            _buildCalendarGrid(context),
+            const SizedBox(height: 24),
+            // Items del día seleccionado
+            _buildSelectedDayItems(context),
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
@@ -779,7 +779,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final items = <dynamic>[];
 
     if (_filterType == 'all' || _filterType == 'tasks') {
-      items.addAll(taskProvider.getTasksByDate(date));
+      items.addAll(taskProvider.getTasksByDate(date, includeProjectTasks: false));
     }
 
     if (_filterType == 'all' || _filterType == 'projects') {

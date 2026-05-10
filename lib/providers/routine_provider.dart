@@ -98,11 +98,11 @@ class RoutineProvider extends ChangeNotifier {
         'frequency': routine.frequency.toString().split('.').last,
         'days_of_week': routine.daysOfWeek.map((e) => e.toString().split('.').last).toList(),
         'color': routine.color,
+        'is_active': routine.isActive,
+        'schedule_time': routine.scheduleTime,
+        'duration_minutes': routine.durationMinutes,
         'created_by': routine.createdBy,
         'repeat_every_days': routine.repeatEveryDays,
-        'schedule_time': routine.scheduleTime,
-        'is_active': routine.isActive,
-        'duration_minutes': routine.durationMinutes,
         'steps': routine.steps,
       });
 
@@ -215,16 +215,29 @@ class RoutineProvider extends ChangeNotifier {
   // Obtener rutinas por fecha (considera repeatEveryDays desde createdAt)
   List<Routine> getRoutinesByDate(DateTime date) {
     final normalizedDate = DateTime(date.year, date.month, date.day);
+    final dayOfWeek = DayOfWeek.values[date.weekday - 1];
+
     return _routines.where((routine) {
       if (!routine.isActive) return false;
-      final normalizedCreated = DateTime(
-        routine.createdAt.year,
-        routine.createdAt.month,
-        routine.createdAt.day,
-      );
-      if (normalizedDate.isBefore(normalizedCreated)) return false;
-      final dayDiff = normalizedDate.difference(normalizedCreated).inDays;
-      return dayDiff % routine.repeatEveryDays == 0;
+
+      // Si usa repetición cada N días, aplicar esa lógica.
+      if (routine.repeatEveryDays > 0) {
+        final normalizedCreated = DateTime(
+          routine.createdAt.year,
+          routine.createdAt.month,
+          routine.createdAt.day,
+        );
+        if (normalizedDate.isBefore(normalizedCreated)) return false;
+        final dayDiff = normalizedDate.difference(normalizedCreated).inDays;
+        return dayDiff % routine.repeatEveryDays == 0;
+      }
+
+      // Compatibilidad con lógica por frecuencia/días de semana.
+      if (routine.daysOfWeek.isNotEmpty) {
+        return routine.daysOfWeek.contains(dayOfWeek);
+      }
+
+      return routine.frequency == Frequency.daily;
     }).toList();
   }
 

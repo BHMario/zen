@@ -47,19 +47,31 @@ module.exports = (pool) => {
 
       const connection = await pool.getConnection();
 
+      // Validar y normalizar due_date al formato YYYY-MM-DD
+      let normalizedDueDate = null;
+      if (due_date) {
+        // Si viene como ISO string (con o sin hora), extraer solo la fecha
+        const dateMatch = due_date.match(/^\d{4}-\d{2}-\d{2}/);
+        if (dateMatch) {
+          normalizedDueDate = dateMatch[0];
+        } else {
+          return res.status(400).json({ error: 'due_date debe estar en formato YYYY-MM-DD' });
+        }
+      }
+
       // Convert all undefined values to null
       const params = [
         taskId,
         user_id,
         title,
         description === undefined ? null : description,
-        due_date === undefined ? null : due_date,
+        normalizedDueDate,
         status || 'pending',
         priority || 'medium',
         project_id === undefined ? null : project_id,
         color === undefined ? null : color,
         labels ? JSON.stringify(labels) : null,
-        created_by || user_id // Usar user_id como default si created_by no se proporciona
+        created_by || user_id
       ];
 
       console.log('📝 Creando tarea con parámetros:', params);

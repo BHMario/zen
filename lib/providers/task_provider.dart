@@ -49,7 +49,12 @@ class TaskProvider extends ChangeNotifier {
           title: taskData['title'] as String,
           description: taskData['description'] as String?,
           dueDate: taskData['due_date'] != null 
-            ? DateTime.parse(taskData['due_date'] as String).toLocal()
+            ? (() {
+                final dateStr = taskData['due_date'] as String;
+                final datePart = dateStr.contains('T') ? dateStr.split('T')[0] : dateStr.split(' ')[0];
+                final parts = datePart.split('-');
+                return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+              })()
             : DateTime.now(),
           status: _parseTaskStatus(taskData['status'] as String? ?? 'pending'),
           priority: _parseTaskPriority(taskData['priority'] as String? ?? 'medium'),
@@ -82,16 +87,18 @@ class TaskProvider extends ChangeNotifier {
   }
 
   // Obtener tareas por fecha
-  List<Task> getTasksByDate(DateTime date) {
-    // Convertir fecha local a UTC para comparación consistente
-    final dateUtc = date.toUtc();
-    // Luego obtener medianoche UTC de ese día
-    final normalizedDate = DateTime.utc(dateUtc.year, dateUtc.month, dateUtc.day);
+  List<Task> getTasksByDate(DateTime date, {bool includeProjectTasks = true}) {
+    // Comparar fechas solo, sin considerar zona horaria
+    // Normalizar la fecha a medianoche local para comparación
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    
     return _tasks.where((task) {
-      final taskDateUtc = task.dueDate.toUtc();
-      return taskDateUtc.year == normalizedDate.year &&
-          taskDateUtc.month == normalizedDate.month &&
-          taskDateUtc.day == normalizedDate.day;
+      // Si no queremos incluir tareas de proyectos y esta tarea tiene proyecto, saltar
+      if (!includeProjectTasks && task.projectId != null) return false;
+
+      // Normalizar fecha de la tarea también
+      final taskDate = DateTime(task.dueDate.year, task.dueDate.month, task.dueDate.day);
+      return taskDate == normalizedDate;
     }).toList();
   }
 
@@ -103,12 +110,14 @@ class TaskProvider extends ChangeNotifier {
       }
 
       // Guardar en MySQL a través de API
-      // Convertir a UTC para garantizar consistencia entre zonas horarias
+      // Convertir a formato YYYY-MM-DD (sin tiempo) para consistencia
+      final dueDateString = '${task.dueDate.year.toString().padLeft(4, '0')}-${task.dueDate.month.toString().padLeft(2, '0')}-${task.dueDate.day.toString().padLeft(2, '0')}';
+      
       final result = await ApiService.createTask({
         'user_id': _currentUserId!,
         'title': task.title,
         'description': task.description,
-        'due_date': task.dueDate.toUtc().toIso8601String(),
+        'due_date': dueDateString,
         'status': task.status.toString().split('.').last,
         'priority': task.priority.toString().split('.').last,
         'project_id': task.projectId,
@@ -185,13 +194,16 @@ class TaskProvider extends ChangeNotifier {
         throw Exception('Usuario no autenticado');
       }
 
+      // Convertir fecha al formato YYYY-MM-DD (sin tiempo)
+      final dueDateString = '${updatedTask.dueDate.year.toString().padLeft(4, '0')}-${updatedTask.dueDate.month.toString().padLeft(2, '0')}-${updatedTask.dueDate.day.toString().padLeft(2, '0')}';
+
       // Actualizar en MySQL a través de API
       final result = await ApiService.updateTask(
         taskId: updatedTask.id,
         updates: {
           'title': updatedTask.title,
           'description': updatedTask.description,
-          'due_date': updatedTask.dueDate.toIso8601String().split('T')[0],
+          'due_date': dueDateString,
           'status': updatedTask.status.toString().split('.').last,
           'priority': updatedTask.priority.toString().split('.').last,
           'project_id': updatedTask.projectId,

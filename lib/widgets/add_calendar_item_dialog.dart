@@ -6,11 +6,15 @@ import 'package:zen/providers/providers.dart';
 import 'package:zen/theme/zen_theme.dart';
 
 class AddCalendarItemDialog extends StatefulWidget {
+  final String? initialType;
+  final String? initialProjectId;
   final DateTime selectedDate;
 
   const AddCalendarItemDialog({
     super.key,
     required this.selectedDate,
+    this.initialType,
+    this.initialProjectId,
   });
 
   @override
@@ -19,6 +23,7 @@ class AddCalendarItemDialog extends StatefulWidget {
 
 class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   String _selectedType = 'task'; // task, project, routine, goal
+  String? _selectedProjectId;
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   DateTime? _dueDate;
@@ -45,6 +50,8 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   @override
   void initState() {
     super.initState();
+    _selectedType = widget.initialType ?? 'task';
+    _selectedProjectId = widget.initialProjectId;
     _titleController = TextEditingController();
     _descriptionController = TextEditingController();
     // Normalizar todas las fechas iniciales para evitar problemas de zona horaria
@@ -75,6 +82,17 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
           await _addTask();
           break;
         case 'project':
+          // Validaciones extendidas para proyectos
+          final error = _validateProject();
+          if (error != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(error),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+            return;
+          }
           await _addProject();
           break;
         case 'routine':
@@ -159,6 +177,46 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     }
   }
 
+  // Validación robusta para proyectos
+  String? _validateProject() {
+    final name = _titleController.text.trim();
+    
+    // 1. Longitud mínima del nombre (Evita nombres vacíos o poco descriptivos)
+    if (name.length < 3) {
+      return 'El nombre del proyecto debe tener al menos 3 caracteres';
+    }
+
+    // 2. Validación de fechas
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final start = _projectStartDate ?? today;
+    final end = _projectEndDate;
+
+    // Fecha de inicio no puede ser anterior a hoy (Evita proyectos retroactivos sin sentido)
+    if (start.isBefore(today)) {
+      return 'La fecha de inicio no puede ser anterior a hoy';
+    }
+
+    // Si hay fecha de fin, debe ser posterior o igual al inicio
+    if (end != null) {
+      if (end.isBefore(start)) {
+        return 'La fecha de fin no puede ser anterior al inicio';
+      }
+
+      // 3. Validación de duración razonable (Zen promueve objetivos alcanzables)
+      // Evitamos proyectos de más de 5 años para prevenir errores de entrada de datos
+      final maxDuration = const Duration(days: 365 * 5);
+      if (end.difference(start).abs() > maxDuration) {
+        return 'Un proyecto no puede durar más de 5 años';
+      }
+    } else {
+      // Un proyecto en Zen DEBE tener fecha de fin para fomentar la acción (opcional según el diseño, pero aquí lo haremos recomendado)
+      return 'Por favor, selecciona una fecha de fin proyectada';
+    }
+
+    return null; // Todo correcto
+  }
+
   Future<void> _addTask() async {
     final authProvider = context.read<AuthProvider>();
     final userId = authProvider.currentUser?.id;
@@ -174,6 +232,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
       priority: _priority,
       color: _selectedColor,
       labels: _selectedLabels,
+      projectId: _selectedProjectId,
       userId: userId,
     );
 
@@ -370,15 +429,23 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                 // Fecha de inicio
                 GestureDetector(
                   onTap: () async {
+                    final now = DateTime.now();
+                    final today = DateTime(now.year, now.month, now.day);
+                    
                     final picked = await showDatePicker(
                       context: context,
-                      initialDate: _projectStartDate ?? DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day),
-                      firstDate: DateTime(DateTime.now().year - 1),
-                      lastDate: DateTime.now().add(const Duration(days: 730)),
+                      initialDate: _projectStartDate ?? (widget.selectedDate.isBefore(today) ? today : widget.selectedDate),
+                      firstDate: today, // Evita seleccionar fechas pasadas
+                      lastDate: today.add(const Duration(days: 365 * 5)), // Máximo 5 años a futuro
                     );
                     if (picked != null) {
-                      // Normalizar la fecha seleccionada para evitar problemas de zona horaria
-                      setState(() => _projectStartDate = DateTime(picked.year, picked.month, picked.day));
+                      setState(() {
+                        _projectStartDate = DateTime(picked.year, picked.month, picked.day);
+                        // Si la fecha de fin es ahora anterior a la nueva fecha de inicio, la reseteamos o ajustamos
+                        if (_projectEndDate != null && _projectEndDate!.isBefore(_projectStartDate!)) {
+                          _projectEndDate = _projectStartDate;
+                        }
+                      });
                     }
                   },
                   child: Container(
@@ -415,14 +482,17 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                 // Fecha de fin
                 GestureDetector(
                   onTap: () async {
+                    final now = DateTime.now();
+                    final today = DateTime(now.year, now.month, now.day);
+                    final start = _projectStartDate ?? today;
+
                     final picked = await showDatePicker(
                       context: context,
-                      initialDate: _projectEndDate ?? (_projectStartDate ?? DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day)),
-                      firstDate: _projectStartDate ?? DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day),
-                      lastDate: DateTime.now().add(const Duration(days: 730)),
+                      initialDate: _projectEndDate ?? start,
+                      firstDate: start, // No puede terminar antes de empezar
+                      lastDate: start.add(const Duration(days: 365 * 5)),
                     );
                     if (picked != null) {
-                      // Normalizar la fecha seleccionada para evitar problemas de zona horaria
                       setState(() => _projectEndDate = DateTime(picked.year, picked.month, picked.day));
                     }
                   },
@@ -479,6 +549,30 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                   },
                 ),
                 const SizedBox(height: 16),
+                // Proyecto (opcional)
+                Consumer<ProjectProvider>(
+                  builder: (context, projectProvider, child) {
+                    final projects = projectProvider.projects;
+                    return DropdownButtonFormField<String>(
+                      value: _selectedProjectId,
+                      decoration: const InputDecoration(
+                        hintText: 'Selecciona proyecto (opcional)',
+                        labelText: 'Proyecto',
+                        prefixIcon: Icon(Icons.folder_outlined),
+                      ),
+                      items: [
+                        const DropdownMenuItem(value: null, child: Text('Ninguno')),
+                        ...projects.map((p) => DropdownMenuItem(
+                          value: p.id,
+                          child: Text(p.name),
+                        )),
+                      ],
+                      onChanged: (value) {
+                        setState(() => _selectedProjectId = value);
+                      },
+                    );
+                  },
+                ),
               ],
 
               // Formulario específico de objetivos

@@ -34,6 +34,17 @@ module.exports = (pool) => {
 
       const connection = await pool.getConnection();
 
+      // Validar formato de fechas (deben ser YYYY-MM-DD)
+      const validateDateFormat = (dateStr) => {
+        if (!dateStr) return true;
+        return /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
+      };
+
+      if (!validateDateFormat(start_date) || !validateDateFormat(end_date)) {
+        connection.release();
+        return res.status(400).json({ error: 'Las fechas deben estar en formato YYYY-MM-DD' });
+      }
+
       // Convert undefined values to null
       const params = [
         projectId,
@@ -44,7 +55,7 @@ module.exports = (pool) => {
         start_date === undefined ? null : start_date,
         end_date === undefined ? null : end_date,
         status || 'active',
-        created_by || user_id // Usar user_id como default si created_by no se proporciona
+        created_by || user_id
       ];
 
       console.log('📝 Creando proyecto con parámetros:', params);

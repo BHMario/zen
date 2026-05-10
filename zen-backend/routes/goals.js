@@ -24,7 +24,7 @@ module.exports = (pool) => {
   // Crear objetivo
   router.post('/', async (req, res) => {
     try {
-      const { user_id, title, description, category, target_date, start_date, progress, status, color, created_by, target_value, current_value, unit, is_completed } = req.body;
+      const { user_id, title, description, category, start_date, target_date, target_value, current_value, unit, timeframe, is_completed, color, created_by } = req.body;
       if (!user_id || !title) {
         return res.status(400).json({ error: 'user_id y title son requeridos' });
       }
@@ -34,29 +34,46 @@ module.exports = (pool) => {
 
       const connection = await pool.getConnection();
 
+      // Validar formato de fechas (deben ser YYYY-MM-DD)
+      const validateDateFormat = (dateStr) => {
+        if (!dateStr) return true;
+        const dateMatch = dateStr.match(/^\d{4}-\d{2}-\d{2}/);
+        return dateMatch !== null;
+      };
+
+      if (!validateDateFormat(start_date) || !validateDateFormat(target_date)) {
+        connection.release();
+        return res.status(400).json({ error: 'Las fechas deben estar en formato YYYY-MM-DD' });
+      }
+
+      // Extraer solo la fecha (YYYY-MM-DD) si viene con hora
+      const extractDate = (dateStr) => {
+        if (!dateStr) return null;
+        const match = dateStr.match(/^\d{4}-\d{2}-\d{2}/);
+        return match ? match[0] : null;
+      };
       const params = [
         goalId,
         user_id,
         title,
         description === undefined ? null : description,
         category === undefined ? null : category,
-        start_date === undefined ? null : start_date,
-        target_date === undefined ? null : target_date,
-        target_value !== undefined ? target_value : 1,
-        current_value !== undefined ? current_value : 0,
-        unit === undefined ? null : unit,
-        progress || 0,
-        status || 'active',
+        extractDate(start_date),
+        extractDate(target_date),
+        target_value !== undefined ? target_value : 1.0,
+        current_value !== undefined ? current_value : 0.0,
+        unit || '%',
+        timeframe || 'mediumTerm',
+        is_completed === true || is_completed === 1,
         color === undefined ? null : color,
-        is_completed !== undefined ? (is_completed ? 1 : 0) : 0,
         created_by || user_id
       ];
 
       console.log('📝 Creando objetivo con parámetros:', params);
 
       await connection.execute(
-        `INSERT INTO goals (id, user_id, title, description, category, start_date, target_date, target_value, current_value, unit, progress, status, color, is_completed, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO goals (id, user_id, title, description, category, start_date, target_date, target_value, current_value, unit, timeframe, is_completed, color, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         params
       );
 

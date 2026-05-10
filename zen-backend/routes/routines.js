@@ -44,9 +44,9 @@ module.exports = (pool) => {
         color === undefined ? null : color,
         created_by || user_id,
         repeat_every_days !== undefined ? repeat_every_days : 1,
-        schedule_time !== undefined ? schedule_time : null,
+        schedule_time === undefined ? null : schedule_time,
         is_active !== undefined ? is_active : true,
-        duration_minutes !== undefined ? duration_minutes : null,
+        duration_minutes === undefined ? null : duration_minutes,
         Array.isArray(steps) ? JSON.stringify(steps) : null,
       ];
 

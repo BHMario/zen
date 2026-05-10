@@ -10,6 +10,14 @@ class DateTimeUtils {
     }
   }
 
+  static String formatShortDate(DateTime date) {
+    try {
+      return DateFormat('dd MMM', 'es_ES').format(date);
+    } catch (e) {
+      return DateFormat('dd/MM').format(date);
+    }
+  }
+
   static String formatDateTime(DateTime dateTime,
       {String format = 'dd/MM/yyyy HH:mm'}) {
     try {

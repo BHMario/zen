@@ -8,6 +8,10 @@ class User {
   final DateTime updatedAt;
   final bool isEmailVerified;
   final bool lopdAccepted;
+  final bool shareAnalytics;
+  final bool showActiveStatus;
+  final bool marketingEmails;
+  final bool profilePrivate;
 
   User({
     required this.id,
@@ -19,6 +23,10 @@ class User {
     required this.updatedAt,
     this.isEmailVerified = false,
     this.lopdAccepted = false,
+    this.shareAnalytics = true,
+    this.showActiveStatus = true,
+    this.marketingEmails = true,
+    this.profilePrivate = false,
   });
 
   User copyWith({
@@ -31,6 +39,10 @@ class User {
     DateTime? updatedAt,
     bool? isEmailVerified,
     bool? lopdAccepted,
+    bool? shareAnalytics,
+    bool? showActiveStatus,
+    bool? marketingEmails,
+    bool? profilePrivate,
   }) {
     return User(
       id: id ?? this.id,
@@ -42,6 +54,10 @@ class User {
       updatedAt: updatedAt ?? this.updatedAt,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       lopdAccepted: lopdAccepted ?? this.lopdAccepted,
+      shareAnalytics: shareAnalytics ?? this.shareAnalytics,
+      showActiveStatus: showActiveStatus ?? this.showActiveStatus,
+      marketingEmails: marketingEmails ?? this.marketingEmails,
+      profilePrivate: profilePrivate ?? this.profilePrivate,
     );
   }
 
@@ -56,6 +72,10 @@ class User {
       'updatedAt': updatedAt.toIso8601String(),
       'isEmailVerified': isEmailVerified,
       'lopdAccepted': lopdAccepted,
+      'shareAnalytics': shareAnalytics,
+      'showActiveStatus': showActiveStatus,
+      'marketingEmails': marketingEmails,
+      'profilePrivate': profilePrivate,
     };
   }
 
@@ -70,6 +90,10 @@ class User {
       updatedAt: DateTime.parse(map['updatedAt'] as String),
       isEmailVerified: map['isEmailVerified'] as bool? ?? false,
       lopdAccepted: map['lopdAccepted'] as bool? ?? false,
+      shareAnalytics: map['shareAnalytics'] as bool? ?? true,
+      showActiveStatus: map['showActiveStatus'] as bool? ?? true,
+      marketingEmails: map['marketingEmails'] as bool? ?? true,
+      profilePrivate: map['profilePrivate'] as bool? ?? false,
     );
   }
 }
