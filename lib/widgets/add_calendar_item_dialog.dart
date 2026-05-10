@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:zen/models/models.dart';
 import 'package:zen/providers/providers.dart';
+import 'package:zen/services/services.dart';
 import 'package:zen/theme/zen_theme.dart';
 
 class AddCalendarItemDialog extends StatefulWidget {
@@ -30,21 +32,27 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   DateTime? _projectStartDate;
   DateTime? _projectEndDate;
   TaskPriority _priority = TaskPriority.medium;
+  TaskType _taskType = TaskType.other;
   GoalCategory _goalCategory = GoalCategory.other;
   GoalTimeframe _goalTimeframe = GoalTimeframe.mediumTerm;
-  String _selectedColor = '#6366F1';
+  String _selectedColor = '#2A2A2A';
   List<String> _selectedLabels = [];
+  String? _attachmentUrl;
+  String? _attachmentType;
+  String? _attachmentName;
+  bool _isUploadingAttachment = false;
   bool _setReminder = false;
   DateTime? _reminderDateTime;
 
   final List<String> _availableColors = [
-    '#6366F1', // Indigo
-    '#8B5CF6', // Purple
-    '#EC4899', // Pink
-    '#F59E0B', // Amber
-    '#10B981', // Emerald
-    '#3B82F6', // Blue
-    '#EF4444', // Red
+    '#111111', // Black
+    '#2A2A2A', // Charcoal
+    '#4A4A4A', // Dark Gray
+    '#8E8E8E', // Medium Gray
+    '#C9C9C9', // Light Gray
+    '#2E7D32', // Green
+    '#F2C94C', // Yellow
+    '#D32F2F', // Red
   ];
 
   @override
@@ -59,6 +67,45 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     _projectStartDate = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
     _projectEndDate = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
     _reminderDateTime = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
+  }
+
+  Future<void> _pickAttachment() async {
+    setState(() => _isUploadingAttachment = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'mov'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        return;
+      }
+
+      final file = result.files.first;
+      final uploadResult = await ApiService.uploadAttachment(file);
+
+      if (uploadResult.containsKey('error')) {
+        throw Exception(uploadResult['error']);
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _attachmentUrl = uploadResult['url'] as String?;
+        _attachmentType = uploadResult['kind'] as String?;
+        _attachmentName = uploadResult['fileName'] as String? ?? file.name;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo subir el adjunto: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingAttachment = false);
+      }
+    }
   }
 
   @override
@@ -147,6 +194,19 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     }
   }
 
+  String _getTaskTypeLabel(TaskType type) {
+    switch (type) {
+      case TaskType.sports:
+        return '⚽ Deporte';
+      case TaskType.personal:
+        return '🧘 Personal';
+      case TaskType.work:
+        return '💼 Trabajo';
+      case TaskType.other:
+        return '📋 Otro';
+    }
+  }
+
   String _goalCategoryLabel(GoalCategory category) {
     switch (category) {
       case GoalCategory.health:
@@ -230,9 +290,12 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
       description: _descriptionController.text,
       dueDate: _dueDate ?? widget.selectedDate,
       priority: _priority,
+      taskType: _taskType,
       color: _selectedColor,
       labels: _selectedLabels,
       projectId: _selectedProjectId,
+      attachmentUrl: _attachmentUrl,
+      attachmentType: _attachmentType,
       userId: userId,
     );
 
@@ -260,6 +323,8 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
       color: _selectedColor,
       startDate: _projectStartDate ?? widget.selectedDate,
       endDate: _projectEndDate,
+      attachmentUrl: _attachmentUrl,
+      attachmentType: _attachmentType,
       userId: userId,
     );
 
@@ -346,7 +411,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Crear Nueva Tarea',
+                'Crear ${_getTypeLabel(_selectedType)}',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 24),
@@ -549,6 +614,25 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                   },
                 ),
                 const SizedBox(height: 16),
+                // Tipo de tarea
+                DropdownButtonFormField<TaskType>(
+                  value: _taskType,
+                  decoration: const InputDecoration(
+                    hintText: 'Selecciona tipo de tarea',
+                    labelText: 'Tipo',
+                    prefixIcon: Icon(Icons.label_outlined),
+                  ),
+                  items: TaskType.values
+                      .map((t) => DropdownMenuItem(
+                        value: t,
+                        child: Text(_getTaskTypeLabel(t)),
+                      ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _taskType = value);
+                  },
+                ),
+                const SizedBox(height: 16),
                 // Proyecto (opcional)
                 Consumer<ProjectProvider>(
                   builder: (context, projectProvider, child) {
@@ -573,6 +657,81 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                     );
                   },
                 ),
+                const SizedBox(height: 16),
+              ],
+
+              if (_selectedType == 'task' || _selectedType == 'project') ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: ZenTheme.borderColor),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Adjunto (opcional)',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'No es obligatorio. Puedes subir una imagen o video como recuerdo.',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: ZenTheme.textLight),
+                      ),
+                      const SizedBox(height: 10),
+                      if (_attachmentUrl == null)
+                        OutlinedButton.icon(
+                          onPressed: _isUploadingAttachment ? null : _pickAttachment,
+                          icon: _isUploadingAttachment
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.attach_file),
+                          label: Text(_isUploadingAttachment
+                              ? 'Subiendo...'
+                              : 'Adjuntar imagen/video'),
+                        )
+                      else
+                        Row(
+                          children: [
+                            Icon(
+                              _attachmentType == 'video'
+                                  ? Icons.videocam_outlined
+                                  : Icons.image_outlined,
+                              color: ZenTheme.textDark,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _attachmentName ?? 'Archivo adjunto',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _attachmentUrl = null;
+                                  _attachmentType = null;
+                                  _attachmentName = null;
+                                });
+                              },
+                              tooltip: 'Quitar adjunto',
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
               ],
 
               // Formulario específico de objetivos
@@ -722,7 +881,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: _addItem,
-                    child: const Text('Crear Tarea'),
+                    child: Text('Crear ${_getTypeLabel(_selectedType)}'),
                   ),
                 ],
               ),

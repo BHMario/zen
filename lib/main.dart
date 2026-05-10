@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:zen/theme/theme.dart';
@@ -34,6 +35,24 @@ class MyApp extends StatelessWidget {
         theme: ZenTheme.lightTheme,
         darkTheme: ZenTheme.darkTheme,
         themeMode: ThemeMode.light,
+        builder: (context, child) {
+          if (!kIsWeb || child == null) return child ?? const SizedBox.shrink();
+
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final maxWidth = constraints.maxWidth >= 1280 ? 1180.0 : 1024.0;
+              return Container(
+                color: ZenTheme.backgroundColor,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxWidth),
+                    child: child,
+                  ),
+                ),
+              );
+            },
+          );
+        },
         home: const _HomeWrapper(),
       ),
     );

@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:zen/models/models.dart';
 import 'package:zen/providers/providers.dart';
 import 'package:zen/theme/zen_theme.dart';
-import 'package:zen/widgets/empty_state.dart';
+import 'package:zen/widgets/widgets.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -13,6 +13,9 @@ class GoalsScreen extends StatefulWidget {
 }
 
 class _GoalsScreenState extends State<GoalsScreen> {
+  String _timeFilter = 'day';
+  DateTime _anchorDate = DateTime.now();
+
   @override
   void initState() {
     super.initState();
@@ -307,6 +310,134 @@ class _GoalsScreenState extends State<GoalsScreen> {
     }
   }
 
+  DateTime _startOfWeek(DateTime d) {
+    final normalized = DateTime(d.year, d.month, d.day);
+    return normalized.subtract(Duration(days: normalized.weekday - 1));
+  }
+
+  DateTime _endOfWeek(DateTime d) {
+    return _startOfWeek(d).add(const Duration(days: 6));
+  }
+
+  List<Goal> _filterByDateScope(List<Goal> goals) {
+    final day = DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
+    if (_timeFilter == 'day') {
+      return goals.where((g) {
+        final gd = DateTime(g.targetDate.year, g.targetDate.month, g.targetDate.day);
+        return gd == day;
+      }).toList();
+    }
+
+    if (_timeFilter == 'week') {
+      final start = _startOfWeek(day);
+      final end = _endOfWeek(day);
+      return goals.where((g) {
+        final gd = DateTime(g.targetDate.year, g.targetDate.month, g.targetDate.day);
+        return !gd.isBefore(start) && !gd.isAfter(end);
+      }).toList();
+    }
+
+    final start = DateTime(day.year, day.month, 1);
+    final end = DateTime(day.year, day.month + 1, 0);
+    return goals.where((g) {
+      final gd = DateTime(g.targetDate.year, g.targetDate.month, g.targetDate.day);
+      return !gd.isBefore(start) && !gd.isAfter(end);
+    }).toList();
+  }
+
+  String _scopeLabel() {
+    if (_timeFilter == 'day') {
+      return '${_anchorDate.day.toString().padLeft(2, '0')}/${_anchorDate.month.toString().padLeft(2, '0')}/${_anchorDate.year}';
+    }
+    if (_timeFilter == 'week') {
+      final start = _startOfWeek(_anchorDate);
+      final end = _endOfWeek(_anchorDate);
+      return '${start.day.toString().padLeft(2, '0')}/${start.month.toString().padLeft(2, '0')} - ${end.day.toString().padLeft(2, '0')}/${end.month.toString().padLeft(2, '0')}';
+    }
+    const months = [
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
+    ];
+    return '${months[_anchorDate.month - 1]} ${_anchorDate.year}';
+  }
+
+  void _shiftScope(int direction) {
+    setState(() {
+      if (_timeFilter == 'day') {
+        _anchorDate = _anchorDate.add(Duration(days: direction));
+      } else if (_timeFilter == 'week') {
+        _anchorDate = _anchorDate.add(Duration(days: 7 * direction));
+      } else {
+        _anchorDate = DateTime(_anchorDate.year, _anchorDate.month + direction, _anchorDate.day);
+      }
+    });
+  }
+
+  Future<void> _pickAnchorDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _anchorDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() => _anchorDate = picked);
+    }
+  }
+
+  Future<void> _toggleGoalComplete(Goal goal) async {
+    final provider = context.read<GoalProvider>();
+    if (goal.isCompleted) {
+      await provider.updateGoal(
+        goal.copyWith(
+          isCompleted: false,
+          completedAt: null,
+          completionAttachmentUrl: null,
+          completionAttachmentType: null,
+          updatedAt: DateTime.now(),
+        ),
+      );
+      return;
+    }
+
+    final completed = goal.copyWith(
+      isCompleted: true,
+      completedAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    await provider.updateGoal(completed);
+
+    final completionData = await CompletionDialog.showCelebrationAndAttach(
+      context,
+      itemTypeLabel: 'Objetivo',
+      title: goal.title,
+      startedAt: goal.startDate,
+      completedAt: DateTime.now(),
+    );
+
+    final url = completionData?['completionAttachmentUrl'];
+    final type = completionData?['completionAttachmentType'];
+    if (url != null) {
+      await provider.updateGoal(
+        completed.copyWith(
+          completionAttachmentUrl: url,
+          completionAttachmentType: type,
+          updatedAt: DateTime.now(),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -330,34 +461,138 @@ class _GoalsScreenState extends State<GoalsScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (provider.goals.isEmpty) {
-            return EmptyState(
-              emoji: '🎯',
-              title: 'Sin objetivos',
-              description: 'Define tu primer objetivo y su fecha límite.',
-              buttonText: 'Crear objetivo',
-              onButtonPressed: _showAddGoalDialog,
-            );
-          }
+          final scopedGoals = _filterByDateScope(provider.goals);
 
-          final active = provider.getActiveGoals();
-          final completed = provider.getCompletedGoals();
+          final active = scopedGoals.where((g) => !g.isCompleted).toList();
+          final completed = scopedGoals.where((g) => g.isCompleted).toList();
+          final completionRate = scopedGoals.isEmpty
+              ? 0
+              : ((completed.length / scopedGoals.length) * 100).round();
 
           return RefreshIndicator(
             onRefresh: _loadGoals,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
               children: [
-                if (active.isNotEmpty) ...[
-                  _sectionHeader('Activos', active.length),
-                  const SizedBox(height: 8),
-                  ...active.map(_goalCard),
-                ],
-                if (completed.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  _sectionHeader('Completados', completed.length),
-                  const SizedBox(height: 8),
-                  ...completed.map(_goalCard),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: ZenTheme.borderColor),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.track_changes, color: ZenTheme.secondaryColor),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '${active.length} activos  ·  ${completed.length} completados  ·  $completionRate%',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: ZenTheme.textDark,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: ZenTheme.borderColor),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Día'),
+                            selected: _timeFilter == 'day',
+                            onSelected: (_) => setState(() => _timeFilter = 'day'),
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('Semana'),
+                            selected: _timeFilter == 'week',
+                            onSelected: (_) => setState(() => _timeFilter = 'week'),
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('Mes'),
+                            selected: _timeFilter == 'month',
+                            onSelected: (_) => setState(() => _timeFilter = 'month'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => _shiftScope(-1),
+                            icon: const Icon(Icons.chevron_left),
+                          ),
+                          Expanded(
+                            child: InkWell(
+                              onTap: _pickAnchorDate,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: ZenTheme.dividerColor,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  _scopeLabel(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => _shiftScope(1),
+                            icon: const Icon(Icons.chevron_right),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => setState(() => _anchorDate = DateTime.now()),
+                          child: const Text('Hoy'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (scopedGoals.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: EmptyState(
+                      emoji: '🎯',
+                      title: 'Sin objetivos',
+                      description: 'No hay objetivos para el rango temporal seleccionado.',
+                      buttonText: 'Crear objetivo',
+                      onButtonPressed: _showAddGoalDialog,
+                    ),
+                  )
+                else ...[
+                  if (active.isNotEmpty) ...[
+                    _sectionHeader('Activos', active.length),
+                    const SizedBox(height: 8),
+                    ...active.map(_goalCard),
+                  ],
+                  if (completed.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    _sectionHeader('Completados', completed.length),
+                    const SizedBox(height: 8),
+                    ...completed.map(_goalCard),
+                  ],
                 ],
               ],
             ),
@@ -397,15 +632,39 @@ class _GoalsScreenState extends State<GoalsScreen> {
     final dueText =
         '${goal.targetDate.day.toString().padLeft(2, '0')}/${goal.targetDate.month.toString().padLeft(2, '0')}/${goal.targetDate.year}';
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () async {
+        if (!goal.isCompleted) return;
+        await CompletionDialog.showSummary(
+          context,
+          itemTypeLabel: 'Objetivo',
+          title: goal.title,
+          startedAt: goal.startDate,
+          completedAt: goal.completedAt ?? goal.updatedAt,
+          attachmentUrl: goal.completionAttachmentUrl,
+          attachmentType: goal.completionAttachmentType,
+        );
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Row(
               children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: ZenTheme.secondaryLight,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.flag_outlined, size: 18),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     goal.title,
@@ -419,7 +678,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 PopupMenuButton<String>(
                   onSelected: (value) async {
                     if (value == 'toggle') {
-                      await context.read<GoalProvider>().toggleComplete(goal);
+                      await _toggleGoalComplete(goal);
                     } else if (value == 'edit') {
                       await _showEditGoalDialog(goal);
                     } else if (value == 'delete') {
@@ -440,7 +699,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
               ],
             ),
             if (goal.description != null && goal.description!.isNotEmpty) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
                 goal.description!,
                 style: Theme.of(context)
@@ -449,14 +708,27 @@ class _GoalsScreenState extends State<GoalsScreen> {
                     ?.copyWith(color: ZenTheme.textLight),
               ),
             ],
-            const SizedBox(height: 10),
-            LinearProgressIndicator(value: progress),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 7,
+                backgroundColor: ZenTheme.dividerColor,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  goal.isCompleted ? ZenTheme.successColor : ZenTheme.secondaryColor,
+                ),
+              ),
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
                 Text(
                   'Progreso: ${goal.currentValue.toStringAsFixed(0)}%',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
                 Text(
@@ -468,7 +740,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 ),
               ],
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

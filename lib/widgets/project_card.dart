@@ -74,6 +74,29 @@ class ProjectCard extends StatelessWidget {
                       _buildStatusBadge(context),
                     ],
                   ),
+                  if (project.attachmentUrl != null) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Icon(
+                          project.attachmentType == 'video'
+                              ? Icons.videocam_outlined
+                              : Icons.image_outlined,
+                          size: 14,
+                          color: ZenTheme.textLight,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          project.attachmentType == 'video'
+                              ? 'Proyecto con video adjunto'
+                              : 'Proyecto con imagen adjunta',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: ZenTheme.textLight,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -96,7 +119,7 @@ class ProjectCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   LinearProgressIndicator(
                     value: progress,
-                    backgroundColor: projectColor.withOpacity(0.1),
+                    backgroundColor: projectColor.withValues(alpha: 0.1),
                     valueColor: AlwaysStoppedAnimation<Color>(projectColor),
                     borderRadius: BorderRadius.circular(4),
                     minHeight: 8,
@@ -158,9 +181,9 @@ class ProjectCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: badgeColor.withOpacity(0.1),
+        color: badgeColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: badgeColor.withOpacity(0.3)),
+        border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
       ),
       child: Text(
         label,

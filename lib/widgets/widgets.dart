@@ -7,3 +7,4 @@ export 'edit_routine_dialog.dart';
 export 'project_card.dart';
 export 'edit_project_dialog.dart';
 export 'edit_task_dialog.dart';
+export 'completion_dialog.dart';

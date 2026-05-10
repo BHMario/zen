@@ -57,7 +57,14 @@ class GoalProvider extends ChangeNotifier {
           createdAt: DateTime.parse(goalData['created_at'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
           updatedAt: DateTime.parse(goalData['updated_at'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
           isCompleted: goalData['is_completed'] == 1 || goalData['is_completed'] == true,
-          color: goalData['color'] as String? ?? '#ec4899',
+            completedAt: goalData['completed_at'] != null
+              ? DateTime.parse(goalData['completed_at'] as String)
+              : null,
+            completionAttachmentUrl:
+              goalData['completion_attachment_url'] as String?,
+            completionAttachmentType:
+              goalData['completion_attachment_type'] as String?,
+          color: goalData['color'] as String? ?? '#2A2A2A',
         );
       }).toList();
       debugPrint('✅ ${_goals.length} objetivos cargados desde API');
@@ -125,7 +132,7 @@ class GoalProvider extends ChangeNotifier {
     required DateTime targetDate,
     double targetValue = 1.0,
     String unit = 'unidades',
-    String color = '#ec4899',
+    String color = '#2A2A2A',
     String? userId,
   }) async {
     String actualUserId;
@@ -190,6 +197,9 @@ class GoalProvider extends ChangeNotifier {
         'unit': goal.unit,
         'color': goal.color,
         'is_completed': goal.isCompleted ? 1 : 0,
+        'completed_at': goal.completedAt?.toIso8601String(),
+        'completion_attachment_url': goal.completionAttachmentUrl,
+        'completion_attachment_type': goal.completionAttachmentType,
       });
       if (!result.containsKey('error')) {
         final idx = _goals.indexWhere((g) => g.id == goal.id);
@@ -231,6 +241,7 @@ class GoalProvider extends ChangeNotifier {
       goal.copyWith(
         isCompleted: willComplete,
         currentValue: willComplete ? goal.targetValue : goal.currentValue,
+        completedAt: willComplete ? DateTime.now() : null,
         updatedAt: DateTime.now(),
       ),
     );
@@ -241,9 +252,13 @@ class GoalProvider extends ChangeNotifier {
     final idx = _goals.indexWhere((g) => g.id == goalId);
     if (idx == -1) return;
     final goal = _goals[idx];
+    final willComplete = newValue >= goal.targetValue;
     final updated = goal.copyWith(
       currentValue: newValue,
-      isCompleted: newValue >= goal.targetValue,
+      isCompleted: willComplete,
+      completedAt: willComplete
+          ? (goal.completedAt ?? DateTime.now())
+          : null,
       updatedAt: DateTime.now(),
     );
     await updateGoal(updated);

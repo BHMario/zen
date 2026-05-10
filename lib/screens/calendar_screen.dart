@@ -26,6 +26,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
         await provider.updateTaskStatus(task.id, TaskStatus.pending);
       } else {
         await provider.completeTask(task.id);
+
+        final updatedTask = provider.tasks.firstWhere((t) => t.id == task.id);
+        final completionData = await CompletionDialog.showCelebrationAndAttach(
+          context,
+          itemTypeLabel: 'Tarea',
+          title: updatedTask.title,
+          startedAt: updatedTask.createdAt,
+          completedAt: updatedTask.completedAt ?? DateTime.now(),
+        );
+
+        final url = completionData?['completionAttachmentUrl'];
+        final type = completionData?['completionAttachmentType'];
+        if (url != null) {
+          await provider.updateTask(
+            updatedTask.copyWith(
+              completionAttachmentUrl: url,
+              completionAttachmentType: type,
+              updatedAt: DateTime.now(),
+            ),
+          );
+        }
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -233,7 +254,36 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (updated == null) return;
 
     try {
+      final wasCompleted = goal.isCompleted;
       await context.read<GoalProvider>().updateProgress(goal.id, updated);
+
+      final refreshedGoal = context
+          .read<GoalProvider>()
+          .goals
+          .firstWhere((g) => g.id == goal.id);
+      if (!wasCompleted && refreshedGoal.isCompleted) {
+        final completionData = await CompletionDialog.showCelebrationAndAttach(
+          context,
+          itemTypeLabel: 'Objetivo',
+          title: refreshedGoal.title,
+          startedAt: refreshedGoal.startDate,
+          completedAt: DateTime.now(),
+        );
+
+        final url = completionData?['completionAttachmentUrl'];
+        final type = completionData?['completionAttachmentType'];
+        if (url != null) {
+          await context.read<GoalProvider>().updateGoal(
+                refreshedGoal.copyWith(
+                  completionAttachmentUrl: url,
+                  completionAttachmentType: type,
+                  completedAt: refreshedGoal.completedAt ?? DateTime.now(),
+                  updatedAt: DateTime.now(),
+                ),
+              );
+        }
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Progreso actualizado')),
@@ -253,7 +303,39 @@ class _CalendarScreenState extends State<CalendarScreen> {
     try {
       final wasCompleted =
           provider.isRoutineCompletedOnDate(routine.id, _selectedDate);
-      await provider.toggleRoutineCompletedForDate(routine.id, _selectedDate);
+      if (wasCompleted) {
+        await provider.setRoutineCompletedForDate(
+          routineId: routine.id,
+          date: _selectedDate,
+          completed: false,
+        );
+      } else {
+        await provider.setRoutineCompletedForDate(
+          routineId: routine.id,
+          date: _selectedDate,
+          completed: true,
+        );
+
+        final completionData = await CompletionDialog.showCelebrationAndAttach(
+          context,
+          itemTypeLabel: 'Rutina',
+          title: routine.name,
+          startedAt: routine.createdAt,
+          completedAt: _selectedDate,
+        );
+
+        final url = completionData?['completionAttachmentUrl'];
+        final type = completionData?['completionAttachmentType'];
+        if (url != null) {
+          await provider.setRoutineCompletedForDate(
+            routineId: routine.id,
+            date: _selectedDate,
+            completed: true,
+            attachmentUrl: url,
+            attachmentType: type,
+          );
+        }
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -631,7 +713,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     final item = items[index];
                     final itemColor = _getItemColor(item);
                     final itemType = _getItemType(item);
-                    final itemTitle = _getItemTitle(item);
+                    final itemTitle = _getItemTitle(item, projectProvider);
                     final itemDescription = _getItemDescription(item);
                     final isTask = item is Task;
                     final isGoal = item is Goal;
@@ -645,17 +727,59 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
                     return InkWell(
                       borderRadius: BorderRadius.circular(8),
-                      onTap: isTask
-                          ? () {
-                              TaskDetailSheet.show(
-                                context,
-                                item,
-                                onEdit: () => _editTask(item),
-                                onDelete: () => _deleteTask(item),
-                                onToggleComplete: () => _toggleTaskComplete(item),
-                              );
-                            }
-                          : null,
+                      onTap: () async {
+                        if (isTask) {
+                          if (item.status == TaskStatus.completed) {
+                            await CompletionDialog.showSummary(
+                              context,
+                              itemTypeLabel: 'Tarea',
+                              title: item.title,
+                              startedAt: item.createdAt,
+                              completedAt: item.completedAt ?? item.updatedAt,
+                              attachmentUrl: item.completionAttachmentUrl,
+                              attachmentType: item.completionAttachmentType,
+                            );
+                            return;
+                          }
+                          TaskDetailSheet.show(
+                            context,
+                            item,
+                            onEdit: () => _editTask(item),
+                            onDelete: () => _deleteTask(item),
+                            onToggleComplete: () => _toggleTaskComplete(item),
+                          );
+                          return;
+                        }
+
+                        if (isRoutine && isRoutineCompletedToday) {
+                          final completionInfo = routineProvider.getRoutineCompletionForDate(
+                            item.id,
+                            _selectedDate,
+                          );
+                          await CompletionDialog.showSummary(
+                            context,
+                            itemTypeLabel: 'Rutina',
+                            title: item.name,
+                            startedAt: item.createdAt,
+                            completedAt: completionInfo?.completedAt ?? _selectedDate,
+                            attachmentUrl: completionInfo?.attachmentUrl,
+                            attachmentType: completionInfo?.attachmentType,
+                          );
+                          return;
+                        }
+
+                        if (isGoal && item.isCompleted) {
+                          await CompletionDialog.showSummary(
+                            context,
+                            itemTypeLabel: 'Objetivo',
+                            title: item.title,
+                            startedAt: item.startDate,
+                            completedAt: item.completedAt ?? item.updatedAt,
+                            attachmentUrl: item.completionAttachmentUrl,
+                            attachmentType: item.completionAttachmentType,
+                          );
+                        }
+                      },
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -843,7 +967,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final items = <dynamic>[];
 
     if (_filterType == 'all' || _filterType == 'tasks') {
-      items.addAll(taskProvider.getTasksByDate(date, includeProjectTasks: false));
+      items.addAll(taskProvider.getTasksByDate(date, includeProjectTasks: true));
     }
 
     if (_filterType == 'all' || _filterType == 'projects') {
@@ -862,19 +986,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Color _getItemColor(dynamic item) {
-    String colorHex = '#6366F1';
-    
-    if (item is Task) {
-      colorHex = item.color;
-    } else if (item is Project) {
-      colorHex = item.color;
-    } else if (item is Routine) {
-      colorHex = item.color;
-    } else if (item is Goal) {
-      colorHex = item.color;
-    }
-
-    return Color(int.parse('0xFF${colorHex.substring(1)}'));
+    return ZenTheme.secondaryColor;
   }
 
   String _getItemType(dynamic item) {
@@ -890,9 +1002,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return 'Item';
   }
 
-  String _getItemTitle(dynamic item) {
+  String _getItemTitle(dynamic item, ProjectProvider projectProvider) {
     if (item is Task) {
-      return item.title;
+      if (item.projectId == null) return item.title;
+      final projectName = projectProvider.getProjectById(item.projectId!)?.name;
+      if (projectName == null || projectName.isEmpty) return item.title;
+      return '${item.title} (Proyecto $projectName)';
     } else if (item is Project) {
       return item.getDateLabel(_selectedDate);
     } else if (item is Routine) {
@@ -920,6 +1035,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final chips = <Widget>[];
 
     if (item is Task) {
+      if (item.projectId != null) {
+        final projectName = context
+            .read<ProjectProvider>()
+            .getProjectById(item.projectId!)
+            ?.name;
+        if (projectName != null && projectName.isNotEmpty) {
+          chips.add(Chip(
+            label: Text(
+              'Proyecto $projectName',
+              style: const TextStyle(fontSize: 10),
+            ),
+            visualDensity: VisualDensity.compact,
+            backgroundColor: ZenTheme.secondaryLight,
+          ));
+        }
+      }
+
       // Agregar labels
       for (final label in item.labels) {
         chips.add(Chip(
@@ -931,15 +1063,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
       // Agregar estado
       chips.add(Chip(
         label: Text(
+          'Entrega ${DateFormat('dd/MM').format(item.dueDate)}',
+          style: const TextStyle(fontSize: 10),
+        ),
+        visualDensity: VisualDensity.compact,
+        backgroundColor: ZenTheme.dividerColor,
+      ));
+
+      chips.add(Chip(
+        label: Text(
           _getStatusLabel(item.status),
           style: const TextStyle(fontSize: 10),
         ),
         visualDensity: VisualDensity.compact,
         backgroundColor: item.status == TaskStatus.completed
-            ? Colors.green.withValues(alpha: 0.2)
+            ? ZenTheme.successColor.withValues(alpha: 0.2)
             : item.status == TaskStatus.inProgress
-                ? Colors.blue.withValues(alpha: 0.2)
-                : Colors.grey.withValues(alpha: 0.2),
+                ? ZenTheme.warningColor.withValues(alpha: 0.2)
+                : ZenTheme.borderColor,
       ));
     } else if (item is Project) {
       chips.add(Chip(
@@ -948,7 +1089,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           style: const TextStyle(fontSize: 10),
         ),
         visualDensity: VisualDensity.compact,
-        backgroundColor: Colors.blue.withValues(alpha: 0.2),
+        backgroundColor: ZenTheme.secondaryLight,
       ));
     } else if (item is Routine) {
       final routineProvider = context.read<RoutineProvider>();
@@ -961,7 +1102,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           style: const TextStyle(fontSize: 10),
         ),
         visualDensity: VisualDensity.compact,
-        backgroundColor: Colors.purple.withValues(alpha: 0.2),
+        backgroundColor: ZenTheme.secondaryLight,
       ));
 
       chips.add(Chip(
@@ -971,8 +1112,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         visualDensity: VisualDensity.compact,
         backgroundColor: completedToday
-            ? Colors.green.withValues(alpha: 0.2)
-            : Colors.grey.withValues(alpha: 0.2),
+            ? ZenTheme.successColor.withValues(alpha: 0.2)
+            : ZenTheme.borderColor,
       ));
     } else if (item is Goal) {
       chips.add(Chip(
@@ -982,8 +1123,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         visualDensity: VisualDensity.compact,
         backgroundColor: item.isCompleted
-            ? Colors.green.withValues(alpha: 0.2)
-            : Colors.orange.withValues(alpha: 0.2),
+            ? ZenTheme.successColor.withValues(alpha: 0.2)
+            : ZenTheme.warningColor.withValues(alpha: 0.2),
       ));
     }
 

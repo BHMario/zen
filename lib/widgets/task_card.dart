@@ -10,6 +10,8 @@ class TaskCard extends StatelessWidget {
   final String priority;
   final String status;
   final String color;
+  final String? projectName;
+  final String? attachmentType;
   final VoidCallback onTap;
 
   const TaskCard({
@@ -19,13 +21,15 @@ class TaskCard extends StatelessWidget {
     required this.dueDate,
     this.priority = 'medium',
     this.status = 'pending',
-    this.color = '#6366F1',
+    this.color = '#2A2A2A',
+    this.projectName,
+    this.attachmentType,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final taskColor = ColorUtils.hexToColor(color);
+    final taskColor = ZenTheme.secondaryColor;
     final isOverdue = DateTimeUtils.isOverdue(dueDate) && status != 'completed';
     final isCompleted = status == 'completed';
 
@@ -114,6 +118,25 @@ class TaskCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 Row(
                   children: [
+                    if (projectName != null && projectName!.isNotEmpty) ...[
+                      const Icon(
+                        Icons.folder_outlined,
+                        size: 13,
+                        color: ZenTheme.textLight,
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'Proyecto $projectName',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: ZenTheme.textLight,
+                              ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     Icon(
                       isOverdue
                           ? Icons.warning_amber_rounded
@@ -254,13 +277,7 @@ class TaskDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color taskColor;
-    try {
-      taskColor = Color(
-          int.parse('0xFF${task.color.replaceFirst('#', '')}'));
-    } catch (_) {
-      taskColor = ZenTheme.primaryColor;
-    }
+    final taskColor = ZenTheme.secondaryColor;
 
     final isCompleted = task.status == TaskStatus.completed;
     final isOverdue = task.isOverdue;
@@ -386,6 +403,19 @@ class TaskDetailSheet extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
+                  ],
+                  if (task.attachmentUrl != null) ...[
+                    const SizedBox(height: 14),
+                    _infoRow(
+                      context,
+                      task.attachmentType == 'video'
+                          ? Icons.videocam_outlined
+                          : Icons.image_outlined,
+                      'Adjunto',
+                      task.attachmentType == 'video'
+                          ? 'Video adjunto (opcional)'
+                          : 'Imagen adjunta (opcional)',
                     ),
                   ],
                   const SizedBox(height: 28),

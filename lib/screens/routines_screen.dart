@@ -3,9 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:zen/models/models.dart';
 import 'package:zen/providers/providers.dart';
 import 'package:zen/theme/zen_theme.dart';
-import 'package:zen/widgets/add_routine_dialog.dart';
-import 'package:zen/widgets/edit_routine_dialog.dart';
-import 'package:zen/widgets/empty_state.dart';
+import 'package:zen/widgets/widgets.dart';
 
 class RoutinesScreen extends StatefulWidget {
   const RoutinesScreen({super.key});
@@ -15,6 +13,9 @@ class RoutinesScreen extends StatefulWidget {
 }
 
 class _RoutinesScreenState extends State<RoutinesScreen> {
+  String _timeFilter = 'day';
+  DateTime _anchorDate = DateTime.now();
+
   @override
   void initState() {
     super.initState();
@@ -90,9 +91,41 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
   Future<void> _toggleRoutineToday(Routine routine) async {
     final provider = context.read<RoutineProvider>();
     try {
-      final today = DateTime.now();
+      final today = DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
       final wasCompleted = provider.isRoutineCompletedOnDate(routine.id, today);
-      await provider.toggleRoutineCompletedForDate(routine.id, today);
+      if (wasCompleted) {
+        await provider.setRoutineCompletedForDate(
+          routineId: routine.id,
+          date: today,
+          completed: false,
+        );
+      } else {
+        await provider.setRoutineCompletedForDate(
+          routineId: routine.id,
+          date: today,
+          completed: true,
+        );
+
+        final completionData = await CompletionDialog.showCelebrationAndAttach(
+          context,
+          itemTypeLabel: 'Rutina',
+          title: routine.name,
+          startedAt: routine.createdAt,
+          completedAt: today,
+        );
+
+        final url = completionData?['completionAttachmentUrl'];
+        final type = completionData?['completionAttachmentType'];
+        if (url != null) {
+          await provider.setRoutineCompletedForDate(
+            routineId: routine.id,
+            date: today,
+            completed: true,
+            attachmentUrl: url,
+            attachmentType: type,
+          );
+        }
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -111,6 +144,97 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
           SnackBar(content: Text('Error al actualizar rutina: $e')),
         );
       }
+    }
+  }
+
+  DateTime _startOfWeek(DateTime d) {
+    final normalized = DateTime(d.year, d.month, d.day);
+    return normalized.subtract(Duration(days: normalized.weekday - 1));
+  }
+
+  DateTime _endOfWeek(DateTime d) {
+    return _startOfWeek(d).add(const Duration(days: 6));
+  }
+
+  List<Routine> _filterByDateScope(RoutineProvider provider) {
+    final date = DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
+    if (_timeFilter == 'day') {
+      return provider.getRoutinesByDate(date);
+    }
+
+    final collected = <String, Routine>{};
+    if (_timeFilter == 'week') {
+      final start = _startOfWeek(date);
+      final end = _endOfWeek(date);
+      DateTime cursor = start;
+      while (!cursor.isAfter(end)) {
+        for (final r in provider.getRoutinesByDate(cursor)) {
+          collected[r.id] = r;
+        }
+        cursor = cursor.add(const Duration(days: 1));
+      }
+      return collected.values.toList();
+    }
+
+    final start = DateTime(date.year, date.month, 1);
+    final end = DateTime(date.year, date.month + 1, 0);
+    DateTime cursor = start;
+    while (!cursor.isAfter(end)) {
+      for (final r in provider.getRoutinesByDate(cursor)) {
+        collected[r.id] = r;
+      }
+      cursor = cursor.add(const Duration(days: 1));
+    }
+    return collected.values.toList();
+  }
+
+  String _scopeLabel() {
+    if (_timeFilter == 'day') {
+      return '${_anchorDate.day.toString().padLeft(2, '0')}/${_anchorDate.month.toString().padLeft(2, '0')}/${_anchorDate.year}';
+    }
+    if (_timeFilter == 'week') {
+      final start = _startOfWeek(_anchorDate);
+      final end = _endOfWeek(_anchorDate);
+      return '${start.day.toString().padLeft(2, '0')}/${start.month.toString().padLeft(2, '0')} - ${end.day.toString().padLeft(2, '0')}/${end.month.toString().padLeft(2, '0')}';
+    }
+    const months = [
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
+    ];
+    return '${months[_anchorDate.month - 1]} ${_anchorDate.year}';
+  }
+
+  void _shiftScope(int direction) {
+    setState(() {
+      if (_timeFilter == 'day') {
+        _anchorDate = _anchorDate.add(Duration(days: direction));
+      } else if (_timeFilter == 'week') {
+        _anchorDate = _anchorDate.add(Duration(days: 7 * direction));
+      } else {
+        _anchorDate = DateTime(_anchorDate.year, _anchorDate.month + direction, _anchorDate.day);
+      }
+    });
+  }
+
+  Future<void> _pickAnchorDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _anchorDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() => _anchorDate = picked);
     }
   }
 
@@ -146,17 +270,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final routines = provider.routines;
-
-          if (routines.isEmpty) {
-            return EmptyState(
-              emoji: '🔄',
-              title: 'Sin rutinas',
-              description: 'Crea tu primera rutina para mantener hábitos consistentes.',
-              buttonText: 'Crear rutina',
-              onButtonPressed: _showAddDialog,
-            );
-          }
+          final routines = _filterByDateScope(provider);
 
           final active = routines.where((r) => r.isActive).toList();
           final inactive = routines.where((r) => !r.isActive).toList();
@@ -169,17 +283,17 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
               children: [
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color: ZenTheme.successColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: ZenTheme.successColor.withValues(alpha: 0.25),
+                      color: ZenTheme.borderColor,
                     ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.emoji_events_outlined, color: ZenTheme.successColor),
+                      const Icon(Icons.emoji_events_outlined, color: ZenTheme.secondaryColor),
                       const SizedBox(width: 8),
                       Text(
                         'Rutinas completadas esta semana: $weeklyDone',
@@ -187,23 +301,111 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
                             .textTheme
                             .bodyMedium
                             ?.copyWith(
-                              color: ZenTheme.successColor,
+                              color: ZenTheme.textDark,
                               fontWeight: FontWeight.w600,
                             ),
                       ),
                     ],
                   ),
                 ),
-                if (active.isNotEmpty) ...[
-                  _sectionHeader(context, 'Activas', active.length),
-                  const SizedBox(height: 8),
-                  ...active.map((r) => _buildRoutineCard(r)),
-                ],
-                if (inactive.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  _sectionHeader(context, 'Inactivas', inactive.length),
-                  const SizedBox(height: 8),
-                  ...inactive.map((r) => _buildRoutineCard(r)),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: ZenTheme.borderColor),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Día'),
+                            selected: _timeFilter == 'day',
+                            onSelected: (_) => setState(() => _timeFilter = 'day'),
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('Semana'),
+                            selected: _timeFilter == 'week',
+                            onSelected: (_) => setState(() => _timeFilter = 'week'),
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('Mes'),
+                            selected: _timeFilter == 'month',
+                            onSelected: (_) => setState(() => _timeFilter = 'month'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => _shiftScope(-1),
+                            icon: const Icon(Icons.chevron_left),
+                          ),
+                          Expanded(
+                            child: InkWell(
+                              onTap: _pickAnchorDate,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: ZenTheme.dividerColor,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  _scopeLabel(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => _shiftScope(1),
+                            icon: const Icon(Icons.chevron_right),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => setState(() => _anchorDate = DateTime.now()),
+                          child: const Text('Hoy'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (routines.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: EmptyState(
+                      emoji: '🔄',
+                      title: 'Sin rutinas',
+                      description: 'Crea tu primera rutina para mantener hábitos consistentes.',
+                      buttonText: 'Crear rutina',
+                      onButtonPressed: _showAddDialog,
+                    ),
+                  )
+                else ...[
+                  if (active.isNotEmpty) ...[
+                    _sectionHeader(context, 'Activas', active.length),
+                    const SizedBox(height: 8),
+                    ...active.map((r) => _buildRoutineCard(r)),
+                  ],
+                  if (inactive.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    _sectionHeader(context, 'Inactivas', inactive.length),
+                    const SizedBox(height: 8),
+                    ...inactive.map((r) => _buildRoutineCard(r)),
+                  ],
                 ],
               ],
             ),
@@ -237,192 +439,208 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
   }
 
   Widget _buildRoutineCard(Routine routine) {
-    Color routineColor;
-    try {
-      routineColor = Color(int.parse('0xFF${routine.color.replaceFirst('#', '')}'));
-    } catch (_) {
-      routineColor = ZenTheme.secondaryColor;
-    }
-    final isCompletedToday =
-        context.watch<RoutineProvider>().isRoutineCompletedOnDate(
-              routine.id,
-              DateTime.now(),
-            );
+    const routineColor = ZenTheme.secondaryColor;
+    final selectedDate = DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
+    final routineProvider = context.watch<RoutineProvider>();
+    final isCompletedOnSelectedDate = routineProvider.isRoutineCompletedOnDate(
+      routine.id,
+      selectedDate,
+    );
+    final completionInfo = routineProvider.getRoutineCompletionForDate(
+      routine.id,
+      selectedDate,
+    );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: routineColor.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: routineColor.withValues(alpha: 0.25)),
-        ),
-        child: Column(
-          children: [
-            ListTile(
-              contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
-              leading: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: routineColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.repeat, color: routineColor, size: 24),
-              ),
-              title: Text(
-                routine.name,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      decoration: routine.isActive
-                          ? null
-                          : TextDecoration.lineThrough,
-                      color: routine.isActive
-                          ? ZenTheme.textDark
-                          : ZenTheme.textLight,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () async {
+          if (!isCompletedOnSelectedDate) return;
+          await CompletionDialog.showSummary(
+            context,
+            itemTypeLabel: 'Rutina',
+            title: routine.name,
+            startedAt: routine.createdAt,
+            completedAt: completionInfo?.completedAt ?? selectedDate,
+            attachmentUrl: completionInfo?.attachmentUrl,
+            attachmentType: completionInfo?.attachmentType,
+          );
+        },
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: ZenTheme.borderColor),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  contentPadding: const EdgeInsets.fromLTRB(16, 10, 8, 6),
+                  leading: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: ZenTheme.secondaryLight,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (routine.description != null &&
-                      routine.description!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      routine.description!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: ZenTheme.textLight),
-                    ),
-                  ],
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
+                    child: const Icon(Icons.repeat, color: ZenTheme.secondaryColor, size: 24),
+                  ),
+                  title: Text(
+                    routine.name,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          decoration: routine.isActive ? null : TextDecoration.lineThrough,
+                          color: routine.isActive ? ZenTheme.textDark : ZenTheme.textLight,
+                        ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _chip(
-                        Icons.repeat,
-                        _repeatLabel(routine.repeatEveryDays),
-                        routineColor,
-                      ),
-                      if (routine.scheduleTime != null)
-                        _chip(
-                          Icons.access_time,
-                          routine.scheduleTime!,
-                          routineColor,
+                      if (routine.description != null && routine.description!.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          routine.description!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: ZenTheme.textLight),
                         ),
-                      if (routine.steps.isNotEmpty)
-                        _chip(
-                          Icons.format_list_bulleted,
-                          '${routine.steps.length} pasos',
-                          routineColor,
-                        ),
-                    ],
-                  ),
-                  if (routine.steps.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: routine.steps
-                          .take(3)
-                          .map(
-                            (step) => Padding(
-                              padding: const EdgeInsets.only(bottom: 2),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(
-                                    Icons.check_circle_outline,
-                                    size: 14,
-                                    color: routineColor,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      step,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(color: ZenTheme.textLight),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                      ],
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          _chip(
+                            Icons.repeat,
+                            _repeatLabel(routine.repeatEveryDays),
+                            routineColor,
+                          ),
+                          if (routine.scheduleTime != null)
+                            _chip(
+                              Icons.access_time,
+                              routine.scheduleTime!,
+                              routineColor,
                             ),
-                          )
-                          .toList(),
-                    ),
-                  ],
-                ],
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: isCompletedToday
-                        ? 'Marcar pendiente hoy'
-                        : 'Marcar completada hoy',
-                    onPressed: () => _toggleRoutineToday(routine),
-                    icon: Icon(
-                      isCompletedToday
-                          ? Icons.check_circle
-                          : Icons.check_circle_outline,
-                      color: isCompletedToday
-                          ? ZenTheme.successColor
-                          : ZenTheme.textLight,
-                    ),
+                          if (routine.steps.isNotEmpty)
+                            _chip(
+                              Icons.format_list_bulleted,
+                              '${routine.steps.length} pasos',
+                              routineColor,
+                            ),
+                        ],
+                      ),
+                      if (routine.steps.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: routine.steps
+                              .take(3)
+                              .map(
+                                (step) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 2),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle_outline,
+                                        size: 14,
+                                        color: routineColor,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          step,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(color: ZenTheme.textLight),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
+                    ],
                   ),
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    onSelected: (value) {
-                      if (value == 'edit') _showEditDialog(routine);
-                      if (value == 'delete') _confirmDelete(routine);
-                    },
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_outlined, size: 18),
-                            SizedBox(width: 8),
-                            Text('Editar'),
-                          ],
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: isCompletedOnSelectedDate
+                            ? 'Marcar pendiente hoy'
+                            : 'Marcar completada hoy',
+                        onPressed: () => _toggleRoutineToday(routine),
+                        icon: Icon(
+                          isCompletedOnSelectedDate
+                              ? Icons.check_circle
+                              : Icons.check_circle_outline,
+                          color: isCompletedOnSelectedDate
+                              ? ZenTheme.successColor
+                              : ZenTheme.textLight,
                         ),
                       ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline,
-                                size: 18, color: ZenTheme.errorColor),
-                            SizedBox(width: 8),
-                            Text('Eliminar',
-                                style: TextStyle(color: ZenTheme.errorColor)),
-                          ],
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        onSelected: (value) {
+                          if (value == 'edit') _showEditDialog(routine);
+                          if (value == 'delete') _confirmDelete(routine);
+                        },
+                        itemBuilder: (_) => [
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_outlined, size: 18),
+                                SizedBox(width: 8),
+                                Text('Editar'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline,
+                                    size: 18, color: ZenTheme.errorColor),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Eliminar',
+                                  style: TextStyle(color: ZenTheme.errorColor),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                // Barra de color inferior
+                Container(
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: routine.isActive
+                        ? ZenTheme.secondaryColor
+                        : ZenTheme.borderColor,
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(16),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            // Barra de color inferior
-            Container(
-              height: 4,
-              decoration: BoxDecoration(
-                color: routine.isActive ? routineColor : routineColor.withValues(alpha: 0.3),
-                borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(12)),
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
     );
   }
 
