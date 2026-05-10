@@ -19,6 +19,9 @@ class Goal {
   final String color;
   final List<String> milestones; // IDs o descripciones de hitos
   final List<String> labels;
+  final DateTime? completedAt;
+  final String? completionAttachmentUrl;
+  final String? completionAttachmentType;
 
   Goal({
     required this.id,
@@ -35,9 +38,12 @@ class Goal {
     required this.createdAt,
     required this.updatedAt,
     this.isCompleted = false,
-    this.color = '#ec4899',
+    this.color = '#2a2a2a',
     this.milestones = const [],
     this.labels = const [],
+    this.completedAt,
+    this.completionAttachmentUrl,
+    this.completionAttachmentType,
   });
 
   Goal copyWith({
@@ -58,6 +64,9 @@ class Goal {
     String? color,
     List<String>? milestones,
     List<String>? labels,
+    DateTime? completedAt,
+    String? completionAttachmentUrl,
+    String? completionAttachmentType,
   }) {
     return Goal(
       id: id ?? this.id,
@@ -77,6 +86,11 @@ class Goal {
       color: color ?? this.color,
       milestones: milestones ?? this.milestones,
       labels: labels ?? this.labels,
+      completedAt: completedAt ?? this.completedAt,
+      completionAttachmentUrl:
+          completionAttachmentUrl ?? this.completionAttachmentUrl,
+      completionAttachmentType:
+          completionAttachmentType ?? this.completionAttachmentType,
     );
   }
 
@@ -99,6 +113,9 @@ class Goal {
       'color': color,
       'milestones': milestones,
       'labels': labels,
+      'completedAt': completedAt?.toIso8601String(),
+      'completionAttachmentUrl': completionAttachmentUrl,
+      'completionAttachmentType': completionAttachmentType,
     };
   }
 
@@ -121,6 +138,11 @@ class Goal {
       color: map['color'] as String? ?? '#ec4899',
       milestones: List<String>.from(map['milestones'] as List<dynamic>? ?? []),
       labels: List<String>.from(map['labels'] as List<dynamic>? ?? []),
+      completedAt: map['completedAt'] != null
+          ? DateTime.parse(map['completedAt'] as String)
+          : null,
+      completionAttachmentUrl: map['completionAttachmentUrl'] as String?,
+      completionAttachmentType: map['completionAttachmentType'] as String?,
     );
   }
 

@@ -165,14 +165,49 @@ class ProjectDetailsScreen extends StatelessWidget {
                           return Card(
                             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             child: ListTile(
+                              onTap: () async {
+                                if (!isCompleted) return;
+                                await CompletionDialog.showSummary(
+                                  context,
+                                  itemTypeLabel: 'Tarea',
+                                  title: task.title,
+                                  startedAt: task.createdAt,
+                                  completedAt: task.completedAt ?? task.updatedAt,
+                                  attachmentUrl: task.completionAttachmentUrl,
+                                  attachmentType: task.completionAttachmentType,
+                                );
+                              },
                               leading: Checkbox(
                                 value: isCompleted,
                                 activeColor: projectColor,
-                                onChanged: (value) {
-                                  taskProvider.updateTaskStatus(
-                                    task.id, 
-                                    value == true ? TaskStatus.completed : TaskStatus.pending
-                                  );
+                                onChanged: (value) async {
+                                  if (value == true && !isCompleted) {
+                                    await taskProvider.completeTask(task.id);
+                                    final updatedTask = taskProvider.tasks.firstWhere((t) => t.id == task.id);
+                                    final completionData = await CompletionDialog.showCelebrationAndAttach(
+                                      context,
+                                      itemTypeLabel: 'Tarea',
+                                      title: updatedTask.title,
+                                      startedAt: updatedTask.createdAt,
+                                      completedAt: updatedTask.completedAt ?? DateTime.now(),
+                                    );
+                                    final url = completionData?['completionAttachmentUrl'];
+                                    final type = completionData?['completionAttachmentType'];
+                                    if (url != null) {
+                                      await context.read<TaskProvider>().updateTask(
+                                        updatedTask.copyWith(
+                                          completionAttachmentUrl: url,
+                                          completionAttachmentType: type,
+                                          updatedAt: DateTime.now(),
+                                        ),
+                                      );
+                                    }
+                                  } else {
+                                    await taskProvider.updateTaskStatus(
+                                      task.id,
+                                      value == true ? TaskStatus.completed : TaskStatus.pending,
+                                    );
+                                  }
                                 },
                               ),
                               title: Text(
@@ -306,12 +341,54 @@ class ProjectDetailsScreen extends StatelessWidget {
                   Navigator.pop(context);
                   final updated = project.copyWith(status: status);
                   await provider.updateProject(updated);
+                  if (status == ProjectStatus.completed && project.status != ProjectStatus.completed) {
+                    final latest = provider.getProjectById(project.id) ?? updated;
+                    final completionData = await CompletionDialog.showCelebrationAndAttach(
+                      context,
+                      itemTypeLabel: 'Proyecto',
+                      title: latest.name,
+                      startedAt: latest.createdAt,
+                      completedAt: latest.completedAt ?? DateTime.now(),
+                    );
+                    final url = completionData?['completionAttachmentUrl'];
+                    final type = completionData?['completionAttachmentType'];
+                    if (url != null) {
+                      await provider.updateProject(
+                        latest.copyWith(
+                          completionAttachmentUrl: url,
+                          completionAttachmentType: type,
+                          updatedAt: DateTime.now(),
+                        ),
+                      );
+                    }
+                  }
                 },
               ),
               onTap: () async {
                 Navigator.pop(context);
                 final updated = project.copyWith(status: status);
                 await provider.updateProject(updated);
+                if (status == ProjectStatus.completed && project.status != ProjectStatus.completed) {
+                  final latest = provider.getProjectById(project.id) ?? updated;
+                  final completionData = await CompletionDialog.showCelebrationAndAttach(
+                    context,
+                    itemTypeLabel: 'Proyecto',
+                    title: latest.name,
+                    startedAt: latest.createdAt,
+                    completedAt: latest.completedAt ?? DateTime.now(),
+                  );
+                  final url = completionData?['completionAttachmentUrl'];
+                  final type = completionData?['completionAttachmentType'];
+                  if (url != null) {
+                    await provider.updateProject(
+                      latest.copyWith(
+                        completionAttachmentUrl: url,
+                        completionAttachmentType: type,
+                        updatedAt: DateTime.now(),
+                      ),
+                    );
+                  }
+                }
               },
             );
           }).toList(),

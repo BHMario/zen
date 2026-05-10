@@ -17,12 +17,17 @@ class Project {
   final DateTime updatedAt;
   final String? iconEmoji;
   final bool isPrivate;
+  final String? attachmentUrl;
+  final String? attachmentType;
+  final DateTime? completedAt;
+  final String? completionAttachmentUrl;
+  final String? completionAttachmentType;
 
   Project({
     required this.id,
     required this.name,
     this.description,
-    this.color = '#3b82f6',
+    this.color = '#2a2a2a',
     this.status = ProjectStatus.planning,
     required this.startDate,
     this.endDate,
@@ -33,6 +38,11 @@ class Project {
     required this.updatedAt,
     this.iconEmoji,
     this.isPrivate = false,
+    this.attachmentUrl,
+    this.attachmentType,
+    this.completedAt,
+    this.completionAttachmentUrl,
+    this.completionAttachmentType,
   });
 
   Project copyWith({
@@ -50,6 +60,11 @@ class Project {
     DateTime? updatedAt,
     String? iconEmoji,
     bool? isPrivate,
+    String? attachmentUrl,
+    String? attachmentType,
+    DateTime? completedAt,
+    String? completionAttachmentUrl,
+    String? completionAttachmentType,
   }) {
     return Project(
       id: id ?? this.id,
@@ -66,6 +81,13 @@ class Project {
       updatedAt: updatedAt ?? this.updatedAt,
       iconEmoji: iconEmoji ?? this.iconEmoji,
       isPrivate: isPrivate ?? this.isPrivate,
+      attachmentUrl: attachmentUrl ?? this.attachmentUrl,
+      attachmentType: attachmentType ?? this.attachmentType,
+      completedAt: completedAt ?? this.completedAt,
+      completionAttachmentUrl:
+          completionAttachmentUrl ?? this.completionAttachmentUrl,
+      completionAttachmentType:
+          completionAttachmentType ?? this.completionAttachmentType,
     );
   }
 
@@ -85,6 +107,11 @@ class Project {
       'updatedAt': updatedAt.toIso8601String(),
       'iconEmoji': iconEmoji,
       'isPrivate': isPrivate,
+      'attachmentUrl': attachmentUrl,
+      'attachmentType': attachmentType,
+      'completedAt': completedAt?.toIso8601String(),
+      'completionAttachmentUrl': completionAttachmentUrl,
+      'completionAttachmentType': completionAttachmentType,
     };
   }
 
@@ -93,7 +120,7 @@ class Project {
       id: map['id'] as String,
       name: map['name'] as String,
       description: map['description'] as String?,
-      color: map['color'] as String? ?? '#3b82f6',
+      color: map['color'] as String? ?? '#2a2a2a',
       status: ProjectStatus.values.byName(map['status'] as String? ?? 'active'),
       startDate: DateTime.parse(map['startDate'] as String),
       endDate: map['endDate'] != null ? DateTime.parse(map['endDate'] as String) : null,
@@ -104,6 +131,13 @@ class Project {
       updatedAt: DateTime.parse(map['updatedAt'] as String),
       iconEmoji: map['iconEmoji'] as String?,
       isPrivate: map['isPrivate'] as bool? ?? false,
+      attachmentUrl: map['attachmentUrl'] as String?,
+      attachmentType: map['attachmentType'] as String?,
+      completedAt: map['completedAt'] != null
+          ? DateTime.parse(map['completedAt'] as String)
+          : null,
+      completionAttachmentUrl: map['completionAttachmentUrl'] as String?,
+      completionAttachmentType: map['completionAttachmentType'] as String?,
     );
   }
 

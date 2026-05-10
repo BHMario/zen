@@ -3,9 +3,24 @@ import 'dart:convert';
 import 'package:zen/models/models.dart';
 import 'package:zen/services/services.dart';
 
+class RoutineCompletionData {
+  final bool isCompleted;
+  final String? attachmentUrl;
+  final String? attachmentType;
+  final DateTime? completedAt;
+
+  const RoutineCompletionData({
+    required this.isCompleted,
+    this.attachmentUrl,
+    this.attachmentType,
+    this.completedAt,
+  });
+}
+
 class RoutineProvider extends ChangeNotifier {
   List<Routine> _routines = [];
-  final Map<String, Set<String>> _completedDatesByRoutine = {};
+  final Map<String, Map<String, RoutineCompletionData>>
+      _completedDatesByRoutine = {};
   bool _isLoading = false;
   String? _currentUserId;
 
@@ -19,7 +34,12 @@ class RoutineProvider extends ChangeNotifier {
 
   bool isRoutineCompletedOnDate(String routineId, DateTime date) {
     final normalized = _normalizeDate(date);
-    return _completedDatesByRoutine[routineId]?.contains(normalized) ?? false;
+    return _completedDatesByRoutine[routineId]?[normalized]?.isCompleted ?? false;
+  }
+
+  RoutineCompletionData? getRoutineCompletionForDate(String routineId, DateTime date) {
+    final normalized = _normalizeDate(date);
+    return _completedDatesByRoutine[routineId]?[normalized];
   }
 
   int getCompletedCountForWeek(DateTime referenceDate) {
@@ -28,8 +48,10 @@ class RoutineProvider extends ChangeNotifier {
     final weekEnd = weekStart.add(const Duration(days: 6));
 
     int count = 0;
-    for (final dates in _completedDatesByRoutine.values) {
-      for (final dateString in dates) {
+    for (final datesByDay in _completedDatesByRoutine.values) {
+      for (final entry in datesByDay.entries) {
+        if (!entry.value.isCompleted) continue;
+        final dateString = entry.key;
         final parts = dateString.split('-');
         if (parts.length != 3) continue;
         final d = DateTime(
@@ -97,7 +119,7 @@ class RoutineProvider extends ChangeNotifier {
           description: routineData['description'] as String?,
           frequency: _parseFrequency(routineData['frequency'] as String? ?? 'daily'),
           daysOfWeek: daysOfWeek,
-          color: routineData['color'] as String? ?? '#8b5cf6',
+          color: routineData['color'] as String? ?? '#2A2A2A',
           createdBy: userId,
           createdAt: DateTime.parse(routineData['created_at'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
           updatedAt: DateTime.parse(routineData['updated_at'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
@@ -116,7 +138,17 @@ class RoutineProvider extends ChangeNotifier {
         final rawDate = c['completion_date']?.toString();
         if (routineId == null || rawDate == null) continue;
         final normalized = rawDate.contains('T') ? rawDate.split('T')[0] : rawDate;
-        _completedDatesByRoutine.putIfAbsent(routineId, () => <String>{}).add(normalized);
+        final completedAt = c['completed_at'] != null
+            ? DateTime.tryParse(c['completed_at'].toString())
+            : null;
+        _completedDatesByRoutine
+            .putIfAbsent(routineId, () => <String, RoutineCompletionData>{})[normalized] =
+            RoutineCompletionData(
+          isCompleted: true,
+          attachmentUrl: c['attachment_url'] as String?,
+          attachmentType: c['attachment_type'] as String?,
+          completedAt: completedAt,
+        );
       }
 
       debugPrint('✅ ${_routines.length} rutinas cargadas desde API');
@@ -170,7 +202,7 @@ class RoutineProvider extends ChangeNotifier {
     String? description,
     Frequency frequency = Frequency.daily,
     List<DayOfWeek> daysOfWeek = const [],
-    String color = '#8b5cf6',
+    String color = '#2A2A2A',
     String? userId,
     String? scheduleTime,
     int? durationMinutes,
@@ -294,6 +326,8 @@ class RoutineProvider extends ChangeNotifier {
     required String routineId,
     required DateTime date,
     required bool completed,
+    String? attachmentUrl,
+    String? attachmentType,
   }) async {
     if (_currentUserId == null) {
       throw Exception('Usuario no autenticado');
@@ -304,6 +338,8 @@ class RoutineProvider extends ChangeNotifier {
       userId: _currentUserId!,
       completionDate: date,
       completed: completed,
+      attachmentUrl: attachmentUrl,
+      attachmentType: attachmentType,
     );
 
     if (!ok) {
@@ -311,11 +347,17 @@ class RoutineProvider extends ChangeNotifier {
     }
 
     final normalized = _normalizeDate(date);
-    final set = _completedDatesByRoutine.putIfAbsent(routineId, () => <String>{});
+    final map = _completedDatesByRoutine
+        .putIfAbsent(routineId, () => <String, RoutineCompletionData>{});
     if (completed) {
-      set.add(normalized);
+      map[normalized] = RoutineCompletionData(
+        isCompleted: true,
+        attachmentUrl: attachmentUrl,
+        attachmentType: attachmentType,
+        completedAt: DateTime.now(),
+      );
     } else {
-      set.remove(normalized);
+      map.remove(normalized);
     }
 
     notifyListeners();

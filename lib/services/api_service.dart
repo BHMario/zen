@@ -1,4 +1,5 @@
 import 'package:http/http.dart' as http;
+import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'dart:io' show Platform;
@@ -19,6 +20,22 @@ class ApiService {
     }
   }
   static final http.Client _client = http.Client();
+
+  static String _buildAbsoluteUrl(String relativeOrAbsolute) {
+    if (relativeOrAbsolute.startsWith('http://') ||
+        relativeOrAbsolute.startsWith('https://')) {
+      return relativeOrAbsolute;
+    }
+
+    final uri = Uri.parse(baseUrl);
+    final host = uri.host;
+    final port = uri.hasPort ? ':${uri.port}' : '';
+    final scheme = uri.scheme;
+    final normalizedPath = relativeOrAbsolute.startsWith('/')
+        ? relativeOrAbsolute
+        : '/$relativeOrAbsolute';
+    return '$scheme://$host$port$normalizedPath';
+  }
 
   /// Obtener headers con token JWT
   static Future<Map<String, String>> _getHeaders() async {
@@ -278,6 +295,60 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> uploadAttachment(PlatformFile file) async {
+    try {
+      final token = await TokenService.getToken();
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/uploads'),
+      );
+
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      if (kIsWeb) {
+        if (file.bytes == null) {
+          return {'error': 'No se pudo leer el archivo seleccionado'};
+        }
+        request.files.add(http.MultipartFile.fromBytes(
+          'attachment',
+          file.bytes!,
+          filename: file.name,
+        ));
+      } else {
+        if (file.path == null) {
+          return {'error': 'No se encontró la ruta del archivo'};
+        }
+        request.files.add(await http.MultipartFile.fromPath(
+          'attachment',
+          file.path!,
+          filename: file.name,
+        ));
+      }
+
+      final streamed = await request.send().timeout(const Duration(seconds: 30));
+      final responseBody = await streamed.stream.bytesToString();
+
+      if (streamed.statusCode == 201) {
+        final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
+        if (decoded['url'] is String) {
+          decoded['url'] = _buildAbsoluteUrl(decoded['url'] as String);
+        }
+        return decoded;
+      }
+
+      try {
+        return jsonDecode(responseBody) as Map<String, dynamic>;
+      } catch (_) {
+        return {'error': 'Error subiendo archivo'};
+      }
+    } catch (e) {
+      debugPrint('❌ Error subiendo archivo: $e');
+      return {'error': e.toString()};
+    }
+  }
+
   static Future<Map<String, dynamic>> updateTask({
     required String taskId,
     required Map<String, dynamic> updates,
@@ -365,6 +436,8 @@ class ApiService {
     String? endDate,
     String? status,
     String? createdBy,
+    String? attachmentUrl,
+    String? attachmentType,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -380,6 +453,8 @@ class ApiService {
           'end_date': endDate,
           'status': status ?? 'active',
           'created_by': createdBy,
+          'attachment_url': attachmentUrl,
+          'attachment_type': attachmentType,
         }),
       );
 
@@ -687,6 +762,8 @@ class ApiService {
     required String userId,
     required DateTime completionDate,
     required bool completed,
+    String? attachmentUrl,
+    String? attachmentType,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -700,6 +777,8 @@ class ApiService {
           'user_id': userId,
           'completion_date': dateString,
           'completed': completed,
+          'attachment_url': attachmentUrl,
+          'attachment_type': attachmentType,
         }),
       );
 

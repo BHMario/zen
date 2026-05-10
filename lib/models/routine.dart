@@ -18,6 +18,11 @@ class Routine {
   final List<String> labels;
   final int repeatEveryDays; // Repetir cada N días (1 = diario, 7 = semanal, etc.)
   final List<String> steps; // Pasos sugeridos para completar la rutina
+  final int currentStreak;
+  final int maxStreak;
+  final DateTime? lastCompletedDate;
+  final String? attachmentUrl;
+  final String? attachmentType;
 
   Routine({
     required this.id,
@@ -25,7 +30,7 @@ class Routine {
     this.description,
     this.frequency = Frequency.daily,
     this.daysOfWeek = const [],
-    this.color = '#8b5cf6',
+    this.color = '#2a2a2a',
     required this.createdBy,
     this.sharedWith = const [],
     required this.createdAt,
@@ -36,6 +41,11 @@ class Routine {
     this.labels = const [],
     this.repeatEveryDays = 1,
     this.steps = const [],
+    this.currentStreak = 0,
+    this.maxStreak = 0,
+    this.lastCompletedDate,
+    this.attachmentUrl,
+    this.attachmentType,
   });
 
   Routine copyWith({
@@ -55,6 +65,11 @@ class Routine {
     List<String>? labels,
     int? repeatEveryDays,
     List<String>? steps,
+    int? currentStreak,
+    int? maxStreak,
+    DateTime? lastCompletedDate,
+    String? attachmentUrl,
+    String? attachmentType,
   }) {
     return Routine(
       id: id ?? this.id,
@@ -73,6 +88,11 @@ class Routine {
       labels: labels ?? this.labels,
       repeatEveryDays: repeatEveryDays ?? this.repeatEveryDays,
       steps: steps ?? this.steps,
+      currentStreak: currentStreak ?? this.currentStreak,
+      maxStreak: maxStreak ?? this.maxStreak,
+      lastCompletedDate: lastCompletedDate ?? this.lastCompletedDate,
+      attachmentUrl: attachmentUrl ?? this.attachmentUrl,
+      attachmentType: attachmentType ?? this.attachmentType,
     );
   }
 
@@ -94,6 +114,11 @@ class Routine {
       'labels': labels,
       'repeatEveryDays': repeatEveryDays,
       'steps': steps,
+      'currentStreak': currentStreak,
+      'maxStreak': maxStreak,
+      'lastCompletedDate': lastCompletedDate?.toIso8601String(),
+      'attachmentUrl': attachmentUrl,
+      'attachmentType': attachmentType,
     };
   }
 
@@ -117,6 +142,13 @@ class Routine {
       labels: List<String>.from(map['labels'] as List<dynamic>? ?? []),
       repeatEveryDays: map['repeatEveryDays'] as int? ?? 1,
       steps: List<String>.from(map['steps'] as List<dynamic>? ?? []),
+      currentStreak: map['currentStreak'] as int? ?? 0,
+      maxStreak: map['maxStreak'] as int? ?? 0,
+      lastCompletedDate: map['lastCompletedDate'] != null
+          ? DateTime.parse(map['lastCompletedDate'] as String)
+          : null,
+      attachmentUrl: map['attachmentUrl'] as String?,
+      attachmentType: map['attachmentType'] as String?,
     );
   }
 }

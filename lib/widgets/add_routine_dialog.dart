@@ -17,18 +17,18 @@ class _AddRoutineDialogState extends State<AddRoutineDialog> {
   late TextEditingController _descriptionController;
   late TextEditingController _repeatDaysController;
   late TextEditingController _stepsController;
-  String _selectedColor = '#8B5CF6';
+  String _selectedColor = '#2A2A2A';
   TimeOfDay? _scheduleTime;
 
   final List<String> _availableColors = [
-    '#6366F1', // Indigo
-    '#8B5CF6', // Purple
-    '#EC4899', // Pink
-    '#F59E0B', // Amber
-    '#10B981', // Emerald
-    '#3B82F6', // Blue
-    '#EF4444', // Red
-    '#06B6D4', // Cyan
+    '#111111', // Black
+    '#2A2A2A', // Charcoal
+    '#4A4A4A', // Dark Gray
+    '#8E8E8E', // Medium Gray
+    '#C9C9C9', // Light Gray
+    '#2E7D32', // Green
+    '#F2C94C', // Yellow
+    '#D32F2F', // Red
   ];
 
   @override

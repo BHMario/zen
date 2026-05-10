@@ -25,14 +25,14 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
   late bool _isActive;
 
   final List<String> _availableColors = [
-    '#6366F1',
-    '#8B5CF6',
-    '#EC4899',
-    '#F59E0B',
-    '#10B981',
-    '#3B82F6',
-    '#EF4444',
-    '#06B6D4',
+    '#111111',
+    '#2A2A2A',
+    '#4A4A4A',
+    '#8E8E8E',
+    '#C9C9C9',
+    '#2E7D32',
+    '#F2C94C',
+    '#D32F2F',
   ];
 
   @override

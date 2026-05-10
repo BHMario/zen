@@ -10,7 +10,9 @@ module.exports = (pool) => {
       const connection = await pool.getConnection();
 
       const [rows] = await connection.execute(
-        'SELECT routine_id, completion_date FROM routine_completions WHERE user_id = ? AND is_completed = 1',
+        `SELECT routine_id, completion_date, is_completed, attachment_url, attachment_type, completed_at
+         FROM routine_completions
+         WHERE user_id = ? AND is_completed = 1`,
         [userId]
       );
 
@@ -88,7 +90,13 @@ module.exports = (pool) => {
   router.post('/:routineId/completions', async (req, res) => {
     try {
       const { routineId } = req.params;
-      const { user_id, completion_date, completed } = req.body;
+      const {
+        user_id,
+        completion_date,
+        completed,
+        attachment_url,
+        attachment_type,
+      } = req.body;
 
       if (!user_id || !completion_date) {
         return res.status(400).json({ error: 'user_id y completion_date son requeridos' });
@@ -103,10 +111,29 @@ module.exports = (pool) => {
         );
       } else {
         await connection.execute(
-          `INSERT INTO routine_completions (id, routine_id, user_id, completion_date, is_completed)
-           VALUES (UUID(), ?, ?, ?, 1)
-           ON DUPLICATE KEY UPDATE is_completed = VALUES(is_completed)`,
-          [routineId, user_id, completion_date]
+          `INSERT INTO routine_completions (
+             id,
+             routine_id,
+             user_id,
+             completion_date,
+             is_completed,
+             attachment_url,
+             attachment_type,
+             completed_at
+           )
+           VALUES (UUID(), ?, ?, ?, 1, ?, ?, NOW())
+           ON DUPLICATE KEY UPDATE
+             is_completed = VALUES(is_completed),
+             attachment_url = VALUES(attachment_url),
+             attachment_type = VALUES(attachment_type),
+             completed_at = VALUES(completed_at)`,
+          [
+            routineId,
+            user_id,
+            completion_date,
+            attachment_url ?? null,
+            attachment_type ?? null,
+          ]
         );
       }
 

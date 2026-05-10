@@ -43,6 +43,11 @@ const initializeDatabase = async () => {
         user_id VARCHAR(36) NOT NULL,
         name VARCHAR(255) NOT NULL,
         description TEXT,
+        attachment_url TEXT,
+        attachment_type VARCHAR(20),
+        completed_at DATETIME,
+        completion_attachment_url TEXT,
+        completion_attachment_type VARCHAR(20),
         color VARCHAR(7) DEFAULT '#3B82F6',
         start_date DATE,
         end_date DATE,
@@ -66,6 +71,11 @@ const initializeDatabase = async () => {
         user_id VARCHAR(36) NOT NULL,
         title VARCHAR(255) NOT NULL,
         description TEXT,
+        attachment_url TEXT,
+        attachment_type VARCHAR(20),
+        completed_at DATETIME,
+        completion_attachment_url TEXT,
+        completion_attachment_type VARCHAR(20),
         due_date DATE,
         status VARCHAR(50) DEFAULT 'pending',
         priority VARCHAR(50) DEFAULT 'medium',
@@ -74,6 +84,7 @@ const initializeDatabase = async () => {
         labels TEXT,
         estimated_hours INT,
         actual_hours INT,
+        task_type VARCHAR(50) DEFAULT 'other',
         created_by VARCHAR(36) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -86,6 +97,38 @@ const initializeDatabase = async () => {
       );
     `);
     console.log('✅ Tabla tasks creada');
+
+    // Asegurar columnas opcionales de adjuntos en instalaciones existentes
+    const taskAlterCols = [
+      'attachment_url TEXT',
+      'attachment_type VARCHAR(20) DEFAULT NULL',
+      'completed_at DATETIME DEFAULT NULL',
+      'completion_attachment_url TEXT',
+      'completion_attachment_type VARCHAR(20) DEFAULT NULL',
+      'task_type VARCHAR(50) DEFAULT \'other\'',
+    ];
+    for (const col of taskAlterCols) {
+      try {
+        await connection.query(`ALTER TABLE tasks ADD COLUMN ${col};`);
+      } catch (e) {
+        // Columna ya existe
+      }
+    }
+
+    const projectAlterCols = [
+      'attachment_url TEXT',
+      'attachment_type VARCHAR(20) DEFAULT NULL',
+      'completed_at DATETIME DEFAULT NULL',
+      'completion_attachment_url TEXT',
+      'completion_attachment_type VARCHAR(20) DEFAULT NULL',
+    ];
+    for (const col of projectAlterCols) {
+      try {
+        await connection.query(`ALTER TABLE projects ADD COLUMN ${col};`);
+      } catch (e) {
+        // Columna ya existe
+      }
+    }
 
     // Tabla de recordatorios
     await connection.query(`
@@ -122,6 +165,11 @@ const initializeDatabase = async () => {
         schedule_time VARCHAR(5),
         duration_minutes INT,
         steps TEXT,
+        current_streak INT DEFAULT 0,
+        max_streak INT DEFAULT 0,
+        last_completed_date DATETIME DEFAULT NULL,
+        attachment_url TEXT,
+        attachment_type VARCHAR(20),
         created_by VARCHAR(36) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -137,6 +185,11 @@ const initializeDatabase = async () => {
       'is_active BOOLEAN DEFAULT TRUE',
       'duration_minutes INT DEFAULT NULL',
       'steps TEXT',
+      'current_streak INT DEFAULT 0',
+      'max_streak INT DEFAULT 0',
+      'last_completed_date DATETIME DEFAULT NULL',
+      'attachment_url TEXT',
+      'attachment_type VARCHAR(20) DEFAULT NULL',
     ];
     for (const col of routineAlterCols) {
       try {
@@ -155,6 +208,9 @@ const initializeDatabase = async () => {
         user_id VARCHAR(36) NOT NULL,
         completion_date DATE NOT NULL,
         is_completed BOOLEAN DEFAULT TRUE,
+        attachment_url TEXT,
+        attachment_type VARCHAR(20),
+        completed_at DATETIME,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         UNIQUE KEY unique_routine_completion (routine_id, user_id, completion_date),
@@ -180,6 +236,9 @@ const initializeDatabase = async () => {
         unit VARCHAR(50) DEFAULT '%',
         timeframe VARCHAR(50) DEFAULT 'mediumTerm',
         is_completed BOOLEAN DEFAULT FALSE,
+        completed_at DATETIME,
+        completion_attachment_url TEXT,
+        completion_attachment_type VARCHAR(20),
         color VARCHAR(7) DEFAULT '#F59E0B',
         created_by VARCHAR(36) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -203,8 +262,24 @@ const initializeDatabase = async () => {
       "unit VARCHAR(50) DEFAULT '%'",
       "timeframe VARCHAR(50) DEFAULT 'mediumTerm'",
       'is_completed BOOLEAN DEFAULT FALSE',
+      'completed_at DATETIME DEFAULT NULL',
+      'completion_attachment_url TEXT',
+      'completion_attachment_type VARCHAR(20) DEFAULT NULL',
       "color VARCHAR(7) DEFAULT '#F59E0B'",
     ];
+
+    const routineCompletionAlterCols = [
+      'attachment_url TEXT',
+      'attachment_type VARCHAR(20) DEFAULT NULL',
+      'completed_at DATETIME DEFAULT NULL',
+    ];
+    for (const col of routineCompletionAlterCols) {
+      try {
+        await connection.query(`ALTER TABLE routine_completions ADD COLUMN ${col};`);
+      } catch (e) {
+        // La columna ya existe (ER_DUP_FIELDNAME), ignorar
+      }
+    }
     for (const col of goalAlterCols) {
       try {
         await connection.query(`ALTER TABLE goals ADD COLUMN ${col};`);
