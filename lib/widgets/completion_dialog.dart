@@ -78,7 +78,7 @@ class CompletionDialog extends StatelessWidget {
             Future<void> pickAndUpload() async {
               setState(() => isUploading = true);
               try {
-                final result = await FilePicker.platform.pickFiles(
+                final result = await FilePicker.pickFiles(
                   type: FileType.custom,
                   allowedExtensions: const [
                     'jpg',

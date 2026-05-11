@@ -5,7 +5,7 @@ import 'package:zen/services/services.dart';
 class AuthProvider extends ChangeNotifier {
   User? _currentUser;
   bool _isLoading = false;
-  String? _errorMessage = null;
+  String? _errorMessage;
   bool _isLogin = true; // true = login, false = register
 
   // Getters

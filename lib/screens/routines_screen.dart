@@ -106,6 +106,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
           completed: true,
         );
 
+        if (!mounted) return;
         final completionData = await CompletionDialog.showCelebrationAndAttach(
           context,
           itemTypeLabel: 'Rutina',

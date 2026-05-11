@@ -217,6 +217,7 @@ npm start
 ```
 
 El servidor arrancará en `http://localhost:3000`. Verifica con:
+
 ```bash
 curl http://localhost:3000/health
 # Respuesta: {"status":"OK","timestamp":"..."}

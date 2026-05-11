@@ -7,6 +7,8 @@ import 'package:zen/theme/zen_theme.dart';
 import 'package:zen/utils/utils.dart';
 import 'package:zen/widgets/widgets.dart';
 
+enum _LegendDotType { circle, square, diamond, bar }
+
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
 
@@ -27,6 +29,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       } else {
         await provider.completeTask(task.id);
 
+        if (!mounted) return;
         final updatedTask = provider.tasks.firstWhere((t) => t.id == task.id);
         final completionData = await CompletionDialog.showCelebrationAndAttach(
           context,
@@ -90,6 +93,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     if (confirmed != true) return;
 
+    if (!mounted) return;
     try {
       await context.read<TaskProvider>().deleteTask(task.id);
       if (mounted) {
@@ -134,7 +138,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<TaskPriority>(
-                    value: selectedPriority,
+                    initialValue: selectedPriority,
                     decoration: const InputDecoration(labelText: 'Prioridad'),
                     items: TaskPriority.values
                         .map(
@@ -193,6 +197,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     try {
+      if (!mounted) return;
       final updatedTask = task.copyWith(
         title: titleController.text.trim(),
         description: descController.text.trim().isEmpty
@@ -253,10 +258,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     controller.dispose();
     if (updated == null) return;
 
+    if (!mounted) return;
     try {
       final wasCompleted = goal.isCompleted;
       await context.read<GoalProvider>().updateProgress(goal.id, updated);
 
+      if (!mounted) return;
       final refreshedGoal = context
           .read<GoalProvider>()
           .goals
@@ -273,6 +280,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final url = completionData?['completionAttachmentUrl'];
         final type = completionData?['completionAttachmentType'];
         if (url != null) {
+          if (!mounted) return;
           await context.read<GoalProvider>().updateGoal(
                 refreshedGoal.copyWith(
                   completionAttachmentUrl: url,
@@ -316,6 +324,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           completed: true,
         );
 
+        if (!mounted) return;
         final completionData = await CompletionDialog.showCelebrationAndAttach(
           context,
           itemTypeLabel: 'Rutina',
@@ -397,11 +406,145 @@ class _CalendarScreenState extends State<CalendarScreen> {
             const SizedBox(height: 24),
             // Items del día seleccionado
             _buildSelectedDayItems(context),
+            const SizedBox(height: 16),
+            // Leyenda
+            _buildLegend(context),
             const SizedBox(height: 24),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildLegend(BuildContext context) {
+    final items = [
+      (
+        'Tarea',
+        Icons.check_circle_outline,
+        const Color(0xFF6366F1),
+        _LegendDotType.circle,
+      ),
+      (
+        'Proyecto',
+        Icons.folder_outlined,
+        const Color(0xFF10B981),
+        _LegendDotType.square,
+      ),
+      (
+        'Rutina',
+        Icons.repeat,
+        const Color(0xFF8B5CF6),
+        _LegendDotType.diamond,
+      ),
+      (
+        'Objetivo',
+        Icons.flag_outlined,
+        const Color(0xFFEC4899),
+        _LegendDotType.bar,
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: ZenTheme.dividerColor.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: ZenTheme.borderColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Leyenda',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: ZenTheme.textLight,
+                    letterSpacing: 0.5,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: items.map((entry) {
+                final label = entry.$1;
+                final icon = entry.$2;
+                final color = entry.$3;
+                final dotType = entry.$4;
+                return Column(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: _buildLegendDot(dotType, color),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Icon(icon, size: 14, color: color),
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: ZenTheme.textLight,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegendDot(_LegendDotType type, Color color) {
+    switch (type) {
+      case _LegendDotType.circle:
+        return Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        );
+      case _LegendDotType.square:
+        return Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        );
+      case _LegendDotType.diamond:
+        return Transform.rotate(
+          angle: 0.7854,
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+        );
+      case _LegendDotType.bar:
+        return Container(
+          width: 14,
+          height: 6,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        );
+    }
   }
 
   Widget _buildMonthSelector(BuildContext context) {
@@ -593,21 +736,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               right: 4,
                               child: Wrap(
                                 spacing: 2,
+                                runSpacing: 2,
+                                alignment: WrapAlignment.center,
                                 children: items
-                                    .take(3)
-                                    .map((item) {
-                                  final itemColor = _getItemColor(item);
-                                  return Container(
-                                    width: 4,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? Colors.white
-                                          : itemColor,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  );
-                                }).toList(),
+                                    .take(4)
+                                    .map((item) =>
+                                      _buildItemDot(item, isSelected))
+                                    .toList(),
                               ),
                             ),
                         ],
@@ -712,7 +847,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   itemBuilder: (context, index) {
                     final item = items[index];
                     final itemColor = _getItemColor(item);
-                    final itemType = _getItemType(item);
                     final itemTitle = _getItemTitle(item, projectProvider);
                     final itemDescription = _getItemDescription(item);
                     final isTask = item is Task;
@@ -829,13 +963,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                     ],
                                   ),
                                 ),
-                                Chip(
-                                  label: Text(
-                                    itemType,
-                                    style: const TextStyle(fontSize: 10),
-                                  ),
-                                  visualDensity: VisualDensity.compact,
-                                ),
+                                _buildTypeBadge(item, context),
                                 if (isTask)
                                   PopupMenuButton<String>(
                                     onSelected: (value) {
@@ -986,22 +1114,64 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Color _getItemColor(dynamic item) {
-    return ZenTheme.secondaryColor;
-  }
-
-  String _getItemType(dynamic item) {
+    String hex = '#6366f1';
     if (item is Task) {
-      return '✓ Tarea';
+      hex = item.color;
     } else if (item is Project) {
-      return '📁 Proyecto';
+      hex = item.color;
     } else if (item is Routine) {
-      return '🔄 Rutina';
+      hex = item.color;
     } else if (item is Goal) {
-      return '🎯 Objetivo';
+      hex = item.color;
     }
-    return 'Item';
+    return ColorUtils.hexToColor(hex);
   }
 
+  Widget _buildItemDot(dynamic item, bool isSelected) {
+    final color = isSelected ? Colors.white : _getItemColor(item);
+    if (item is Task) {
+      return Container(
+        width: 6,
+        height: 6,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      );
+    } else if (item is Project) {
+      return Container(
+        width: 6,
+        height: 6,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(1),
+        ),
+      );
+    } else if (item is Routine) {
+      return Transform.rotate(
+        angle: 0.7854,
+        child: Container(
+          width: 5,
+          height: 5,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(0.5),
+          ),
+        ),
+      );
+    } else if (item is Goal) {
+      return Container(
+        width: 8,
+        height: 4,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      );
+    }
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
   String _getItemTitle(dynamic item, ProjectProvider projectProvider) {
     if (item is Task) {
       if (item.projectId == null) return item.title;
@@ -1029,6 +1199,56 @@ class _CalendarScreenState extends State<CalendarScreen> {
       return item.description;
     }
     return null;
+  }
+
+  Widget _buildTypeBadge(dynamic item, BuildContext context) {
+    final IconData icon;
+    final String label;
+    final Color color;
+
+    if (item is Task) {
+      icon = Icons.check_circle_outline;
+      label = 'Tarea';
+      color = ColorUtils.hexToColor(item.color);
+    } else if (item is Project) {
+      icon = Icons.folder_outlined;
+      label = 'Proyecto';
+      color = ColorUtils.hexToColor(item.color);
+    } else if (item is Routine) {
+      icon = Icons.repeat;
+      label = 'Rutina';
+      color = ColorUtils.hexToColor(item.color);
+    } else if (item is Goal) {
+      icon = Icons.flag_outlined;
+      label = 'Objetivo';
+      color = ColorUtils.hexToColor(item.color);
+    } else {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   List<Widget> _getItemChips(dynamic item, BuildContext context) {

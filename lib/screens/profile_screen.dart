@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:zen/providers/providers.dart';
+import 'package:zen/services/token_service.dart';
 import 'package:zen/theme/zen_theme.dart';
 import 'package:zen/utils/utils.dart';
 import 'privacy_screen.dart';
@@ -220,6 +221,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   children: [
                     // Header con avatar
+                    Stack(
+                      children: [
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(24),
@@ -298,6 +301,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ],
                       ),
+                    ),
+                    // Botón paleta en esquina superior derecha
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: GestureDetector(
+                        onTap: () => _showAvatarColorPicker(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _contrastColor(_avatarBgColor).withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: _contrastColor(_avatarBgColor).withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.palette_outlined,
+                            size: 20,
+                            color: _contrastColor(_avatarBgColor),
+                          ),
+                        ),
+                      ),
+                    ),
+                    ],
                     ),
 
                     const SizedBox(height: 24),

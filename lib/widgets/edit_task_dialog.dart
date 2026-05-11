@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:zen/models/models.dart';
 import 'package:zen/providers/providers.dart';
-import 'package:zen/theme/zen_theme.dart';
 
 class EditTaskDialog extends StatefulWidget {
   final Task task;
@@ -64,7 +63,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
               
               // Priority
               DropdownButtonFormField<TaskPriority>(
-                value: _priority,
+                initialValue: _priority,
                 decoration: const InputDecoration(labelText: 'Prioridad'),
                 items: TaskPriority.values.map((p) {
                   return DropdownMenuItem(

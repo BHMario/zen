@@ -84,7 +84,10 @@ class AnalyticsService {
 
       double totalHours = 0;
       for (final task in projectTasks) {
-        final hours = task['hours'] as num?;
+        // Usar horas reales, con horas estimadas como respaldo
+        final actual = task['actual_hours'] as num?;
+        final estimated = task['estimated_hours'] as num?;
+        final hours = actual ?? estimated;
         if (hours != null) {
           totalHours += hours.toDouble();
         }
@@ -98,30 +101,46 @@ class AnalyticsService {
     return timeByProject;
   }
 
-  /// Obtener porcentaje de hábitos cumplidos por día
+  /// Obtener porcentaje de hábitos cumplidos por día (última semana)
   static Future<Map<String, int>> getHabitCompletion(String userId) async {
-    final routines = await ApiService.getRoutines(userId: userId);
-    
-    final Map<String, int> completion = {
-      'Lunes': 0,
-      'Martes': 0,
-      'Miércoles': 0,
-      'Jueves': 0,
-      'Viernes': 0,
-      'Sábado': 0,
-      'Domingo': 0,
-    };
+    final completions = await ApiService.getRoutineCompletions(userId: userId);
 
+    final now = DateTime.now();
+    final weekAgo = now.subtract(const Duration(days: 7));
     final weekDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
-    // Simulación: en la práctica, necesitarías una tabla de completion history
-    for (final routine in routines) {
-      // Asignar aleatoriamente a días como simulación
-      int dayIndex = routine['id'].toString().hashCode % 7;
-      completion[weekDays[dayIndex]] = (completion[weekDays[dayIndex]]! + 20).clamp(0, 100);
+    final Map<String, int> completed = {
+      for (final d in weekDays) d: 0,
+    };
+    final Map<String, int> total = {
+      for (final d in weekDays) d: 0,
+    };
+
+    for (final c in completions) {
+      final dateStr = c['completion_date'] as String?;
+      if (dateStr == null) continue;
+      final parts = dateStr.split('T')[0].split('-');
+      final date = DateTime(
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+        int.parse(parts[2]),
+      );
+      if (date.isBefore(weekAgo) || date.isAfter(now)) continue;
+
+      final dayName = weekDays[date.weekday - 1];
+      total[dayName] = (total[dayName] ?? 0) + 1;
+      final isCompleted = c['completed'] == true || c['completed'] == 1;
+      if (isCompleted) {
+        completed[dayName] = (completed[dayName] ?? 0) + 1;
+      }
     }
 
-    return completion;
+    final result = <String, int>{};
+    for (final day in weekDays) {
+      final t = total[day] ?? 0;
+      result[day] = t > 0 ? ((completed[day]! / t) * 100).round() : 0;
+    }
+    return result;
   }
 
   /// Calcular balance trabajo/vida personal basado en etiquetas
@@ -165,34 +184,34 @@ class AnalyticsService {
 
     final allTasks = await ApiService.getTasks(userId: userId);
 
-    // Tareas completadas hace 2 semanas a 1 semana
+    DateTime? parseDate(dynamic raw) {
+      if (raw == null) return null;
+      try { return DateTime.parse(raw as String); } catch (_) { return null; }
+    }
+
+    // Tareas completadas hace 2 semanas a 1 semana (usar completed_at, fallback updated_at)
     final previousWeek = allTasks
         .where((task) {
-          final dateStr = task['updated_at'];
-          if (dateStr == null) return false;
-          final date = DateTime.parse(dateStr as String);
-          return date.isAfter(twoWeeksAgo) && 
-                 date.isBefore(weekAgo) &&
-                 task['status'] == 'completed';
+          if (task['status'] != 'completed') return false;
+          final date = parseDate(task['completed_at']) ?? parseDate(task['updated_at']);
+          if (date == null) return false;
+          return date.isAfter(twoWeeksAgo) && date.isBefore(weekAgo);
         })
         .length;
 
     // Tareas completadas en la última semana
     final currentWeek = allTasks
         .where((task) {
-          final dateStr = task['updated_at'];
-          if (dateStr == null) return false;
-          final date = DateTime.parse(dateStr as String);
-          return date.isAfter(weekAgo) && 
-                 date.isBefore(now) &&
-                 task['status'] == 'completed';
+          if (task['status'] != 'completed') return false;
+          final date = parseDate(task['completed_at']) ?? parseDate(task['updated_at']);
+          if (date == null) return false;
+          return date.isAfter(weekAgo) && date.isBefore(now);
         })
         .length;
 
-    if (previousWeek == 0) return 0;
-    
-    final trend = ((currentWeek - previousWeek) / previousWeek) * 100;
-    return trend;
+    if (previousWeek == 0) return currentWeek > 0 ? 100.0 : 0.0;
+
+    return ((currentWeek - previousWeek) / previousWeek) * 100;
   }
 
   /// Obtener total de tareas completadas
@@ -201,10 +220,13 @@ class AnalyticsService {
     return tasks.where((task) => task['status'] == 'completed').length;
   }
 
-  /// Obtener total de tareas pendientes
+  /// Obtener total de tareas pendientes (excluye canceladas)
   static Future<int> getTotalPendingTasks(String userId) async {
     final tasks = await ApiService.getTasks(userId: userId);
-    return tasks.where((task) => task['status'] != 'completed').length;
+    return tasks
+        .where((task) =>
+            task['status'] == 'pending' || task['status'] == 'in_progress')
+        .length;
   }
 
   /// Obtener streak actual de días productivos
@@ -216,11 +238,14 @@ class AnalyticsService {
     final completedByDate = <DateTime, int>{};
     for (final task in tasks) {
       if (task['status'] == 'completed') {
-        final dateStr = task['updated_at'];
+        // Preferir completed_at; caer en updated_at si no existe
+        final dateStr = task['completed_at'] ?? task['updated_at'];
         if (dateStr != null) {
-          final date = DateTime.parse(dateStr as String);
-          final dateOnly = DateTime(date.year, date.month, date.day);
-          completedByDate[dateOnly] = (completedByDate[dateOnly] ?? 0) + 1;
+          try {
+            final date = DateTime.parse(dateStr as String);
+            final dateOnly = DateTime(date.year, date.month, date.day);
+            completedByDate[dateOnly] = (completedByDate[dateOnly] ?? 0) + 1;
+          } catch (_) {}
         }
       }
     }

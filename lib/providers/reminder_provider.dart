@@ -249,7 +249,7 @@ class ReminderProvider extends ChangeNotifier {
       frequency: _parseReminderFrequency(frequency),
       message: message,
       isActive: isActive,
-      createdBy: createdBy ?? _currentUserId ?? 'system',
+      createdBy: createdBy ?? _currentUserId,
       createdAt: createdAt ?? DateTime.now(),
       updatedAt: updatedAt ?? DateTime.now(),
     );

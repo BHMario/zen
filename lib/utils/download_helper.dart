@@ -1,8 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
-import 'package:zen/services/services.dart';
 
 // No podemos importar dart:html directamente porque rompería la compilación en móvil.
 // Usaremos una técnica de "conditional export" o simplemente lógica de plataforma si es seguro.

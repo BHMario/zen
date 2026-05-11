@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:zen/models/models.dart';
 import 'package:zen/providers/providers.dart';
-import 'package:zen/theme/zen_theme.dart';
 import 'package:zen/utils/utils.dart';
 
 class EditProjectDialog extends StatefulWidget {
