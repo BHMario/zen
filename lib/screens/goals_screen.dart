@@ -306,7 +306,20 @@ class _GoalsScreenState extends State<GoalsScreen> {
     );
 
     if (confirm == true) {
-      await context.read<GoalProvider>().deleteGoal(goal.id);
+      try {
+        await context.read<GoalProvider>().deleteGoal(goal.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Objetivo eliminado')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error eliminando objetivo: $e')),
+          );
+        }
+      }
     }
   }
 
@@ -321,28 +334,27 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   List<Goal> _filterByDateScope(List<Goal> goals) {
     final day = DateTime(_anchorDate.year, _anchorDate.month, _anchorDate.day);
+
+    bool inScope(Goal g, DateTime scopeStart, DateTime scopeEnd) {
+      final gStart = DateTime(g.startDate.year, g.startDate.month, g.startDate.day);
+      final gEnd = DateTime(g.targetDate.year, g.targetDate.month, g.targetDate.day);
+      // El objetivo es relevante si su rango [startDate, targetDate] se solapa con el scope
+      return !gEnd.isBefore(scopeStart) && !gStart.isAfter(scopeEnd);
+    }
+
     if (_timeFilter == 'day') {
-      return goals.where((g) {
-        final gd = DateTime(g.targetDate.year, g.targetDate.month, g.targetDate.day);
-        return gd == day;
-      }).toList();
+      return goals.where((g) => inScope(g, day, day)).toList();
     }
 
     if (_timeFilter == 'week') {
       final start = _startOfWeek(day);
       final end = _endOfWeek(day);
-      return goals.where((g) {
-        final gd = DateTime(g.targetDate.year, g.targetDate.month, g.targetDate.day);
-        return !gd.isBefore(start) && !gd.isAfter(end);
-      }).toList();
+      return goals.where((g) => inScope(g, start, end)).toList();
     }
 
     final start = DateTime(day.year, day.month, 1);
     final end = DateTime(day.year, day.month + 1, 0);
-    return goals.where((g) {
-      final gd = DateTime(g.targetDate.year, g.targetDate.month, g.targetDate.day);
-      return !gd.isBefore(start) && !gd.isAfter(end);
-    }).toList();
+    return goals.where((g) => inScope(g, start, end)).toList();
   }
 
   String _scopeLabel() {
@@ -401,9 +413,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
       await provider.updateGoal(
         goal.copyWith(
           isCompleted: false,
-          completedAt: null,
-          completionAttachmentUrl: null,
-          completionAttachmentType: null,
+          clearCompletedAt: true,
+          clearCompletionAttachmentUrl: true,
+          clearCompletionAttachmentType: true,
           updatedAt: DateTime.now(),
         ),
       );

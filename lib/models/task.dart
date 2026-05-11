@@ -71,8 +71,11 @@ class Task {
     String? attachmentUrl,
     String? attachmentType,
     DateTime? completedAt,
+    bool clearCompletedAt = false,
     String? completionAttachmentUrl,
+    bool clearCompletionAttachmentUrl = false,
     String? completionAttachmentType,
+    bool clearCompletionAttachmentType = false,
     TaskType? taskType,
   }) {
     return Task(
@@ -94,11 +97,9 @@ class Task {
       actualHours: actualHours ?? this.actualHours,
       attachmentUrl: attachmentUrl ?? this.attachmentUrl,
       attachmentType: attachmentType ?? this.attachmentType,
-      completedAt: completedAt ?? this.completedAt,
-      completionAttachmentUrl:
-          completionAttachmentUrl ?? this.completionAttachmentUrl,
-      completionAttachmentType:
-          completionAttachmentType ?? this.completionAttachmentType,
+      completedAt: clearCompletedAt ? null : (completedAt ?? this.completedAt),
+      completionAttachmentUrl: clearCompletionAttachmentUrl ? null : (completionAttachmentUrl ?? this.completionAttachmentUrl),
+      completionAttachmentType: clearCompletionAttachmentType ? null : (completionAttachmentType ?? this.completionAttachmentType),
       taskType: taskType ?? this.taskType,
     );
   }
@@ -159,7 +160,13 @@ class Task {
     );
   }
 
-  bool get isOverdue => dueDate.toUtc().isBefore(DateTime.now().toUtc()) && status != TaskStatus.completed;
+  bool get isOverdue {
+    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final due = DateTime(dueDate.year, dueDate.month, dueDate.day);
+    return due.isBefore(today) &&
+        status != TaskStatus.completed &&
+        status != TaskStatus.cancelled;
+  }
   bool get isCompleted => status == TaskStatus.completed;
   bool get isInProgress => status == TaskStatus.inProgress;
 }

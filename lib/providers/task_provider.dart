@@ -230,6 +230,9 @@ class TaskProvider extends ChangeNotifier {
           'attachment_url': updatedTask.attachmentUrl,
           'attachment_type': updatedTask.attachmentType,
           'color': updatedTask.color,
+          'completed_at': updatedTask.completedAt?.toIso8601String(),
+          'completion_attachment_url': updatedTask.completionAttachmentUrl,
+          'completion_attachment_type': updatedTask.completionAttachmentType,
           'updated_at': DateTime.now().toIso8601String(),
         },
       );
@@ -324,7 +327,7 @@ class TaskProvider extends ChangeNotifier {
 
   // Aplicar filtros
   void _applyFilters() {
-    _filteredTasks = _tasks;
+    _filteredTasks = List.from(_tasks);
   }
 
   // Buscar tareas por título
@@ -357,6 +360,8 @@ class TaskProvider extends ChangeNotifier {
         return TaskStatus.completed;
       case 'in_progress':
         return TaskStatus.inProgress;
+      case 'cancelled':
+        return TaskStatus.cancelled;
       case 'pending':
       default:
         return TaskStatus.pending;

@@ -148,6 +148,9 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
         case 'goal':
           await _addGoal();
           break;
+        default:
+          debugPrint('⚠️ Tipo de item desconocido: $_selectedType');
+          return;
       }
 
       if (mounted) {
@@ -246,16 +249,9 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
       return 'El nombre del proyecto debe tener al menos 3 caracteres';
     }
 
-    // 2. Validación de fechas
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final start = _projectStartDate ?? today;
+    // Fecha de inicio no puede ser anterior a la fecha de fin
+    final start = _projectStartDate ?? DateTime.now();
     final end = _projectEndDate;
-
-    // Fecha de inicio no puede ser anterior a hoy (Evita proyectos retroactivos sin sentido)
-    if (start.isBefore(today)) {
-      return 'La fecha de inicio no puede ser anterior a hoy';
-    }
 
     // Si hay fecha de fin, debe ser posterior o igual al inicio
     if (end != null) {
@@ -287,7 +283,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
 
     await context.read<TaskProvider>().addTask(
       title: _titleController.text,
-      description: _descriptionController.text,
+      description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
       dueDate: _dueDate ?? widget.selectedDate,
       priority: _priority,
       taskType: _taskType,
@@ -300,8 +296,10 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     );
 
     if (_setReminder && _reminderDateTime != null) {
+      final tasks = context.read<TaskProvider>().tasks;
+      final createdId = tasks.isNotEmpty ? tasks.last.id : '';
       await context.read<ReminderProvider>().addReminder(
-        itemId: '', // Se asignaría el ID real de la tarea
+        itemId: createdId,
         type: ReminderType.task,
         dateTime: _reminderDateTime!,
         message: _titleController.text,
@@ -319,7 +317,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
 
     await context.read<ProjectProvider>().addProject(
       name: _titleController.text,
-      description: _descriptionController.text,
+      description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
       color: _selectedColor,
       startDate: _projectStartDate ?? widget.selectedDate,
       endDate: _projectEndDate,
@@ -332,8 +330,11 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     await context.read<ProjectProvider>().loadUserProjects(userId);
 
     if (_setReminder && _reminderDateTime != null) {
+      final projects = context.read<ProjectProvider>().projects;
+      final matching = projects.where((p) => p.name == _titleController.text.trim()).toList();
+      final createdId = matching.isNotEmpty ? matching.last.id : '';
       await context.read<ReminderProvider>().addReminder(
-        itemId: '',
+        itemId: createdId,
         type: ReminderType.project,
         dateTime: _reminderDateTime!,
         message: _titleController.text,
@@ -351,15 +352,17 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
 
     await context.read<RoutineProvider>().addRoutine(
       name: _titleController.text,
-      description: _descriptionController.text,
+      description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
       frequency: Frequency.daily,
       color: _selectedColor,
       userId: userId,
     );
 
     if (_setReminder && _reminderDateTime != null) {
+      final routines = context.read<RoutineProvider>().routines;
+      final createdId = routines.isNotEmpty ? routines.last.id : '';
       await context.read<ReminderProvider>().addReminder(
-        itemId: '',
+        itemId: createdId,
         type: ReminderType.routine,
         dateTime: _reminderDateTime!,
         message: _titleController.text,
@@ -377,7 +380,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
 
     await context.read<GoalProvider>().addGoal(
       title: _titleController.text,
-      description: _descriptionController.text,
+      description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
       category: _goalCategory,
       timeframe: _goalTimeframe,
       startDate: widget.selectedDate,
@@ -389,8 +392,11 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     );
 
     if (_setReminder && _reminderDateTime != null) {
+      final goals = context.read<GoalProvider>().goals;
+      final matching = goals.where((g) => g.title == _titleController.text.trim()).toList();
+      final createdId = matching.isNotEmpty ? matching.last.id : '';
       await context.read<ReminderProvider>().addReminder(
-        itemId: '',
+        itemId: createdId,
         type: ReminderType.goal,
         dateTime: _reminderDateTime!,
         message: _titleController.text,

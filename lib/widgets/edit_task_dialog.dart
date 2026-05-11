@@ -112,15 +112,18 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
   }
 
   Future<void> _saveTask() async {
-    if (_titleController.text.isEmpty) return;
+    if (_titleController.text.trim().isEmpty) return;
 
     setState(() => _isSaving = true);
     try {
       final updatedTask = widget.task.copyWith(
-        title: _titleController.text,
-        description: _descriptionController.text,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty
+            ? ''
+            : _descriptionController.text.trim(),
         priority: _priority,
         dueDate: _dueDate,
+        updatedAt: DateTime.now(),
       );
 
       await context.read<TaskProvider>().updateTask(updatedTask);

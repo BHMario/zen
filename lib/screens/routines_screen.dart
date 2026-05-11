@@ -274,7 +274,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
 
           final active = routines.where((r) => r.isActive).toList();
           final inactive = routines.where((r) => !r.isActive).toList();
-          final weeklyDone = provider.getCompletedCountForWeek(DateTime.now());
+          final weeklyDone = provider.getCompletedCountForWeek(_anchorDate);
 
           return RefreshIndicator(
             onRefresh: _loadRoutines,

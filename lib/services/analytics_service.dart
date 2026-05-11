@@ -43,8 +43,11 @@ class AnalyticsService {
     final weekDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
     for (final task in tasks) {
-      final dueDate = DateTime.parse(task['due_date'] as String);
-      final dayOfWeek = (dueDate.weekday % 7);
+      final dueDateStr = task['due_date'] as String;
+      final datePart = dueDateStr.contains('T') ? dueDateStr.split('T')[0] : dueDateStr.split(' ')[0];
+      final parts = datePart.split('-');
+      final dueDate = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+      final dayOfWeek = dueDate.weekday - 1; // 0=Lunes, 6=Domingo
       final dayName = weekDays[dayOfWeek];
 
       total[dayName] = (total[dayName] ?? 0) + 1;

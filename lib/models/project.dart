@@ -63,8 +63,11 @@ class Project {
     String? attachmentUrl,
     String? attachmentType,
     DateTime? completedAt,
+    bool clearCompletedAt = false,
     String? completionAttachmentUrl,
+    bool clearCompletionAttachmentUrl = false,
     String? completionAttachmentType,
+    bool clearCompletionAttachmentType = false,
   }) {
     return Project(
       id: id ?? this.id,
@@ -83,11 +86,9 @@ class Project {
       isPrivate: isPrivate ?? this.isPrivate,
       attachmentUrl: attachmentUrl ?? this.attachmentUrl,
       attachmentType: attachmentType ?? this.attachmentType,
-      completedAt: completedAt ?? this.completedAt,
-      completionAttachmentUrl:
-          completionAttachmentUrl ?? this.completionAttachmentUrl,
-      completionAttachmentType:
-          completionAttachmentType ?? this.completionAttachmentType,
+      completedAt: clearCompletedAt ? null : (completedAt ?? this.completedAt),
+      completionAttachmentUrl: clearCompletionAttachmentUrl ? null : (completionAttachmentUrl ?? this.completionAttachmentUrl),
+      completionAttachmentType: clearCompletionAttachmentType ? null : (completionAttachmentType ?? this.completionAttachmentType),
     );
   }
 
