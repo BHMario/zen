@@ -196,7 +196,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
 
   String _getTaskTypeLabel(TaskType type) {
     switch (type) {
-      case TaskType.sports:
+      case TaskType.sport:
         return '⚽ Deporte';
       case TaskType.personal:
         return '🧘 Personal';
