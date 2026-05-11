@@ -128,6 +128,11 @@ class RoutineProvider extends ChangeNotifier {
           durationMinutes: (routineData['duration_minutes'] as num?)?.toInt(),
           repeatEveryDays: (routineData['repeat_every_days'] as num?)?.toInt() ?? 1,
           steps: steps,
+          currentStreak: (routineData['current_streak'] as num?)?.toInt() ?? 0,
+          maxStreak: (routineData['max_streak'] as num?)?.toInt() ?? 0,
+          lastCompletedDate: routineData['last_completed_date'] != null
+              ? DateTime.tryParse(routineData['last_completed_date'].toString())
+              : null,
         );
       }).toList();
 
@@ -296,7 +301,12 @@ class RoutineProvider extends ChangeNotifier {
     return _routines.where((routine) {
       if (!routine.isActive) return false;
 
-      // Si usa repetición cada N días, aplicar esa lógica.
+      // Si tiene días de semana definidos, tienen prioridad sobre repeatEveryDays
+      if (routine.daysOfWeek.isNotEmpty) {
+        return routine.daysOfWeek.contains(dayOfWeek);
+      }
+
+      // Repetición cada N días desde la fecha de creación
       if (routine.repeatEveryDays > 0) {
         final normalizedCreated = DateTime(
           routine.createdAt.year,
@@ -306,11 +316,6 @@ class RoutineProvider extends ChangeNotifier {
         if (normalizedDate.isBefore(normalizedCreated)) return false;
         final dayDiff = normalizedDate.difference(normalizedCreated).inDays;
         return dayDiff % routine.repeatEveryDays == 0;
-      }
-
-      // Compatibilidad con lógica por frecuencia/días de semana.
-      if (routine.daysOfWeek.isNotEmpty) {
-        return routine.daysOfWeek.contains(dayOfWeek);
       }
 
       return routine.frequency == Frequency.daily;
