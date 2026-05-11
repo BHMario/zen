@@ -382,7 +382,7 @@ class TaskProvider extends ChangeNotifier {
   TaskType _parseTaskType(String type) {
     switch (type) {
       case 'sport':
-        return TaskType.sports;
+        return TaskType.sport;
       case 'personal':
         return TaskType.personal;
       case 'work':
