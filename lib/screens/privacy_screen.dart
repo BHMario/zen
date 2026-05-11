@@ -287,7 +287,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
       subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
       value: value,
       onChanged: onChanged,
-      activeColor: ZenTheme.primaryColor,
+      activeThumbColor: ZenTheme.primaryColor,
     );
   }
 }

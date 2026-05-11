@@ -51,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _selectBirthDate(BuildContext context) async {
+  Future<void> _selectBirthDate() async {
     try {
       // Calcular fecha inicial: 18 años atrás
       final DateTime initialDate = DateTime(
@@ -163,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 16),
                           GestureDetector(
-                            onTap: () => _selectBirthDate(context),
+                            onTap: () => _selectBirthDate(),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
@@ -198,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 16),
                           // Selector de país
                           DropdownButtonFormField<CountryCode>(
-                            value: _selectedCountry,
+                            initialValue: _selectedCountry,
                             decoration: InputDecoration(
                               hintText: 'País',
                               prefixIcon: const Icon(Icons.public_outlined),

@@ -38,12 +38,12 @@ class ProjectDetailsScreen extends StatelessWidget {
                     ),
                   ),
                   background: Container(
-                    color: projectColor.withOpacity(0.1),
+                    color: projectColor.withValues(alpha: 0.1),
                     child: Center(
                       child: Icon(
                         Icons.folder_outlined,
                         size: 80,
-                        color: projectColor.withOpacity(0.3),
+                        color: projectColor.withValues(alpha: 0.3),
                       ),
                     ),
                   ),
@@ -111,7 +111,7 @@ class ProjectDetailsScreen extends StatelessWidget {
                                 const SizedBox(height: 12),
                                 LinearProgressIndicator(
                                   value: completionPercentage / 100.0,
-                                  backgroundColor: projectColor.withOpacity(0.1),
+                                  backgroundColor: projectColor.withValues(alpha: 0.1),
                                   valueColor: AlwaysStoppedAnimation<Color>(projectColor),
                                   borderRadius: BorderRadius.circular(4),
                                   minHeight: 10,
@@ -183,6 +183,7 @@ class ProjectDetailsScreen extends StatelessWidget {
                                 onChanged: (value) async {
                                   if (value == true && !isCompleted) {
                                     await taskProvider.completeTask(task.id);
+                                    if (!context.mounted) return;
                                     final updatedTask = taskProvider.tasks.firstWhere((t) => t.id == task.id);
                                     final completionData = await CompletionDialog.showCelebrationAndAttach(
                                       context,
@@ -194,6 +195,7 @@ class ProjectDetailsScreen extends StatelessWidget {
                                     final url = completionData?['completionAttachmentUrl'];
                                     final type = completionData?['completionAttachmentType'];
                                     if (url != null) {
+                                      if (!context.mounted) return;
                                       await context.read<TaskProvider>().updateTask(
                                         updatedTask.copyWith(
                                           completionAttachmentUrl: url,
@@ -220,7 +222,7 @@ class ProjectDetailsScreen extends StatelessWidget {
                               subtitle: Text(
                                 DateTimeUtils.getRelativeDate(task.dueDate),
                                 style: TextStyle(
-                                  color: isCompleted ? ZenTheme.textLight.withOpacity(0.5) : null,
+                                  color: isCompleted ? ZenTheme.textLight.withValues(alpha: 0.5) : null,
                                 ),
                               ),
                               trailing: IconButton(
@@ -343,6 +345,7 @@ class ProjectDetailsScreen extends StatelessWidget {
                   await provider.updateProject(updated);
                   if (status == ProjectStatus.completed && project.status != ProjectStatus.completed) {
                     final latest = provider.getProjectById(project.id) ?? updated;
+                    if (!context.mounted) return;
                     final completionData = await CompletionDialog.showCelebrationAndAttach(
                       context,
                       itemTypeLabel: 'Proyecto',
@@ -370,6 +373,7 @@ class ProjectDetailsScreen extends StatelessWidget {
                 await provider.updateProject(updated);
                 if (status == ProjectStatus.completed && project.status != ProjectStatus.completed) {
                   final latest = provider.getProjectById(project.id) ?? updated;
+                  if (!context.mounted) return;
                   final completionData = await CompletionDialog.showCelebrationAndAttach(
                     context,
                     itemTypeLabel: 'Proyecto',

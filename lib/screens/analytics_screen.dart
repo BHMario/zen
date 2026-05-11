@@ -5,7 +5,7 @@ import 'package:zen/providers/providers.dart';
 import 'package:zen/theme/zen_theme.dart';
 
 class AnalyticsScreen extends StatefulWidget {
-  const AnalyticsScreen({Key? key}) : super(key: key);
+  const AnalyticsScreen({super.key});
 
   @override
   State<AnalyticsScreen> createState() => _AnalyticsScreenState();
@@ -16,6 +16,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   void initState() {
     super.initState();
     Future.microtask(() {
+      if (!mounted) return;
       final authProvider = context.read<AuthProvider>();
       final analyticsProvider = context.read<AnalyticsProvider>();
       if (authProvider.currentUser != null) {
@@ -506,7 +507,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: isPositive ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+      color: isPositive ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -576,7 +577,7 @@ class _KPICard extends StatelessWidget {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: color.withOpacity(0.1),
+      color: color.withValues(alpha: 0.1),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(

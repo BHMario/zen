@@ -219,23 +219,7 @@ cd zen-backend
 npm install
 ```
 
-El repositorio ya incluye `zen-backend/.env`. Revísalo y ajusta al menos estos valores:
-
-- `DB_HOST`
-- `DB_USER`
-- `DB_PASSWORD`
-- `DB_NAME` (recomendado: `zen_db`)
-- `JWT_SECRET`
-- `PORT` (por defecto, `3000`)
-
-Después inicializa la BD y arranca el servidor:
-
-```bash
-node init-db.js
-npm run dev
-```
-
-Verificación del backend:
+El servidor arrancará en `http://localhost:3000`. Verifica con:
 
 ```bash
 curl http://localhost:3000/health

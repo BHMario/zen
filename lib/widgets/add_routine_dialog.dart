@@ -32,8 +32,6 @@ class _AddRoutineDialogState extends State<AddRoutineDialog> {
     (label: 'Mensual', days: 30, icon: Icons.calendar_month_outlined),
   ];
 
-  bool _isPreset(int days) => _repeatPresets.any((p) => p.days == days);
-
   final List<String> _availableColors = [
     '#111111', // Black
     '#2A2A2A', // Charcoal

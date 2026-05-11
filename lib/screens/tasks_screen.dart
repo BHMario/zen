@@ -45,6 +45,7 @@ class _TasksScreenState extends State<TasksScreen> {
       } else {
         await provider.completeTask(task.id);
 
+        if (!mounted) return;
         final updatedTask = provider.tasks.firstWhere((t) => t.id == task.id);
         final completionData = await CompletionDialog.showCelebrationAndAttach(
           context,
@@ -179,6 +180,7 @@ class _TasksScreenState extends State<TasksScreen> {
 
     if (confirmed != true) return;
 
+    if (!mounted) return;
     try {
       await context.read<TaskProvider>().deleteTask(task.id);
       if (mounted) {
@@ -223,7 +225,7 @@ class _TasksScreenState extends State<TasksScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<TaskPriority>(
-                    value: selectedPriority,
+                    initialValue: selectedPriority,
                     decoration: const InputDecoration(labelText: 'Prioridad'),
                     items: TaskPriority.values
                         .map(
@@ -281,6 +283,7 @@ class _TasksScreenState extends State<TasksScreen> {
       return;
     }
 
+    if (!mounted) return;
     try {
       final updatedTask = task.copyWith(
         title: titleController.text.trim(),
