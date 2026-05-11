@@ -176,89 +176,116 @@ zen/
 
 ## Instalación y Ejecución
 
-### 1. Clonar el Repositorio
+### 1. Clonar el repositorio
 
 ```bash
 git clone https://github.com/BHMario/zen.git
 cd zen
 ```
 
-### 2. Configurar la Base de Datos (MySQL)
+### 2. Preparar dependencias y entorno
+
+Instala y verifica estas herramientas antes de arrancar el proyecto:
+
+- Flutter SDK (incluye Dart)
+- Node.js 18+
+- MySQL 8+
+
+Comprobación rápida:
 
 ```bash
-# Acceder a MySQL
-mysql -u root -p
+flutter --version
+node -v
+npm -v
+mysql --version
+```
 
-# Crear la base de datos (o usar el script automático)
+### 3. Configurar la base de datos
+
+Este proyecto usa la base de datos `zen_db` y el script de inicialización crea tablas automáticamente.
+
+```bash
+mysql -u root -p
 CREATE DATABASE IF NOT EXISTS zen_db;
 EXIT;
 ```
 
-### 3. Backend (Node.js + Express)
+### 4. Configurar y ejecutar backend
+
+Abre una terminal en la raíz del proyecto y ejecuta:
 
 ```bash
-# Navegar al directorio del backend
 cd zen-backend
-
-# Instalar dependencias
 npm install
-
-# Crear archivo de variables de entorno
-cp .env.example .env   # o crear manualmente (ver sección de configuración)
-
-# Inicializar las tablas de la BD
-node init-db.js
-
-# Iniciar el servidor en modo desarrollo
-npm run dev
-
-# O en modo producción
-npm start
 ```
 
-El servidor arrancará en `http://localhost:3000`. Verifica con:
+El repositorio ya incluye `zen-backend/.env`. Revísalo y ajusta al menos estos valores:
+
+- `DB_HOST`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME` (recomendado: `zen_db`)
+- `JWT_SECRET`
+- `PORT` (por defecto, `3000`)
+
+Después inicializa la BD y arranca el servidor:
+
+```bash
+node init-db.js
+npm run dev
+```
+
+Verificación del backend:
+
 ```bash
 curl http://localhost:3000/health
-# Respuesta: {"status":"OK","timestamp":"..."}
 ```
 
-### 4. Frontend (Flutter)
+Respuesta esperada:
+
+```json
+{"status":"OK","timestamp":"..."}
+```
+
+### 5. Configurar y ejecutar frontend (Flutter)
+
+En una segunda terminal, desde la raíz del proyecto:
 
 ```bash
-# Volver al directorio raíz
-cd ..
-
-# Instalar dependencias de Flutter
 flutter pub get
-
-# Verificar que el entorno está correcto
 flutter doctor
-
-# Ejecutar en modo debug
-flutter run
-
-# Ejecutar en un dispositivo específico
-flutter run -d chrome       # Web
-flutter run -d windows      # Windows
-flutter run -d android      # Android (emulador o dispositivo)
-flutter run -d ios           # iOS (solo en macOS)
-
-# Compilar para producción
-flutter build apk            # Android APK
-flutter build appbundle      # Android App Bundle
-flutter build web            # Web
-flutter build windows        # Windows
-flutter build ios            # iOS
 ```
 
-### 5. Ejecución Completa (Resumen Rápido)
+Ejecuta la app en el dispositivo/plataforma que prefieras:
 
 ```bash
-# Terminal 1 - Backend
-cd zen-backend && npm run dev
+flutter run -d chrome
+flutter run -d windows
+flutter run -d android
+```
 
-# Terminal 2 - Frontend
-cd zen && flutter run -d chrome
+Nota: `flutter run -d ios` y `flutter build ios` solo funcionan en macOS.
+
+### 6. Flujo recomendado para desarrollo
+
+Usa dos terminales en paralelo:
+
+```bash
+# Terminal 1 (backend)
+cd zen-backend
+npm run dev
+
+# Terminal 2 (frontend, desde la raíz del proyecto)
+flutter run -d chrome
+```
+
+### 7. Build de producción (opcional)
+
+```bash
+flutter build apk
+flutter build appbundle
+flutter build web
+flutter build windows
 ```
 
 ---
