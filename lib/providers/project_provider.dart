@@ -46,13 +46,22 @@ class ProjectProvider extends ChangeNotifier {
           id: projectData['id'] as String,
           name: projectData['name'] as String,
           description: projectData['description'] as String?,
-          color: projectData['color'] as String? ?? '#3B82F6',
+          color: projectData['color'] as String? ?? '#2A2A2A',
           status: _parseProjectStatus(projectData['status'] as String? ?? 'active'),
           startDate: parseDate(projectData['start_date'] as String?) ?? DateTime.now(),
           endDate: parseDate(projectData['end_date'] as String?),
           createdBy: userId,
           createdAt: DateTime.parse(projectData['created_at'] as String),
           updatedAt: DateTime.parse(projectData['updated_at'] as String),
+          attachmentUrl: projectData['attachment_url'] as String?,
+          attachmentType: projectData['attachment_type'] as String?,
+            completedAt: projectData['completed_at'] != null
+              ? DateTime.parse(projectData['completed_at'] as String)
+              : null,
+            completionAttachmentUrl:
+              projectData['completion_attachment_url'] as String?,
+            completionAttachmentType:
+              projectData['completion_attachment_type'] as String?,
         );
       }).toList();
       debugPrint('✅ ${_projects.length} proyectos cargados desde API');
@@ -87,6 +96,8 @@ class ProjectProvider extends ChangeNotifier {
         endDate: endDateString,
         status: project.status.toString().split('.').last,
         createdBy: project.createdBy,
+        attachmentUrl: project.attachmentUrl,
+        attachmentType: project.attachmentType,
       );
 
       if (!result.containsKey('error')) {
@@ -107,9 +118,11 @@ class ProjectProvider extends ChangeNotifier {
   Future<void> addProject({
     required String name,
     String? description,
-    String color = '#3B82F6',
+    String color = '#2A2A2A',
     required DateTime startDate,
     DateTime? endDate,
+    String? attachmentUrl,
+    String? attachmentType,
     String? userId,
   }) async {
     // Determinar el userId a usar
@@ -139,6 +152,8 @@ class ProjectProvider extends ChangeNotifier {
       createdBy: actualUserId,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+      attachmentUrl: attachmentUrl,
+      attachmentType: attachmentType,
     );
     
     await createProject(project);
@@ -170,6 +185,11 @@ class ProjectProvider extends ChangeNotifier {
           'status': project.status.toString().split('.').last,
           'start_date': startDateString,
           'end_date': endDateString,
+          'attachment_url': project.attachmentUrl,
+          'attachment_type': project.attachmentType,
+          'completed_at': project.completedAt?.toIso8601String(),
+          'completion_attachment_url': project.completionAttachmentUrl,
+          'completion_attachment_type': project.completionAttachmentType,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         },
       );
@@ -282,18 +302,22 @@ class ProjectProvider extends ChangeNotifier {
     String? createdBy,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? attachmentUrl,
+    String? attachmentType,
   }) async {
     final project = Project(
       id: id,
       name: name,
       description: description,
-      color: color ?? '#3B82F6',
+      color: color ?? '#2A2A2A',
       status: _parseProjectStatus(status),
       startDate: startDate ?? DateTime.now(),
       endDate: endDate,
       createdBy: createdBy ?? userId,
       createdAt: createdAt ?? DateTime.now(),
       updatedAt: updatedAt ?? DateTime.now(),
+      attachmentUrl: attachmentUrl,
+      attachmentType: attachmentType,
     );
     _projects.add(project);
   }

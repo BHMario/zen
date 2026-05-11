@@ -1,4 +1,5 @@
 import 'package:http/http.dart' as http;
+import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'dart:io' show Platform;
@@ -19,6 +20,22 @@ class ApiService {
     }
   }
   static final http.Client _client = http.Client();
+
+  static String _buildAbsoluteUrl(String relativeOrAbsolute) {
+    if (relativeOrAbsolute.startsWith('http://') ||
+        relativeOrAbsolute.startsWith('https://')) {
+      return relativeOrAbsolute;
+    }
+
+    final uri = Uri.parse(baseUrl);
+    final host = uri.host;
+    final port = uri.hasPort ? ':${uri.port}' : '';
+    final scheme = uri.scheme;
+    final normalizedPath = relativeOrAbsolute.startsWith('/')
+        ? relativeOrAbsolute
+        : '/$relativeOrAbsolute';
+    return '$scheme://$host$port$normalizedPath';
+  }
 
   /// Obtener headers con token JWT
   static Future<Map<String, String>> _getHeaders() async {
@@ -140,6 +157,89 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> changePassword({
+    required String userId,
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.put(
+        Uri.parse('$baseUrl/users/change-password'),
+        headers: headers,
+        body: jsonEncode({
+          'userId': userId,
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        try {
+          final error = jsonDecode(response.body);
+          return {'error': error['error'] ?? 'Error al cambiar contraseña'};
+        } catch (e) {
+          return {'error': 'Error: ${response.statusCode}'};
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error en changePassword: $e');
+      return {'error': e.toString()};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateUserSettings({
+    required String userId,
+    required Map<String, dynamic> settings,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.put(
+        Uri.parse('$baseUrl/users/$userId/settings'),
+        headers: headers,
+        body: jsonEncode(settings),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        try {
+          final error = jsonDecode(response.body);
+          return {'error': error['error'] ?? 'Error al actualizar configuración'};
+        } catch (e) {
+          return {'error': 'Error: ${response.statusCode}'};
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error en updateUserSettings: $e');
+      return {'error': e.toString()};
+    }
+  }
+
+  static Future<bool> deleteAccount(String userId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.delete(
+        Uri.parse('$baseUrl/users/$userId'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
+        return false;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ Error en deleteAccount: $e');
+      return false;
+    }
+  }
+
   // ==================== TASKS ====================
 
   static Future<List<Map<String, dynamic>>> getTasks({String? userId}) async {
@@ -191,6 +291,60 @@ class ApiService {
       }
     } catch (e) {
       debugPrint('❌ Error creando tarea: $e');
+      return {'error': e.toString()};
+    }
+  }
+
+  static Future<Map<String, dynamic>> uploadAttachment(PlatformFile file) async {
+    try {
+      final token = await TokenService.getToken();
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/uploads'),
+      );
+
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      if (kIsWeb) {
+        if (file.bytes == null) {
+          return {'error': 'No se pudo leer el archivo seleccionado'};
+        }
+        request.files.add(http.MultipartFile.fromBytes(
+          'attachment',
+          file.bytes!,
+          filename: file.name,
+        ));
+      } else {
+        if (file.path == null) {
+          return {'error': 'No se encontró la ruta del archivo'};
+        }
+        request.files.add(await http.MultipartFile.fromPath(
+          'attachment',
+          file.path!,
+          filename: file.name,
+        ));
+      }
+
+      final streamed = await request.send().timeout(const Duration(seconds: 30));
+      final responseBody = await streamed.stream.bytesToString();
+
+      if (streamed.statusCode == 201) {
+        final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
+        if (decoded['url'] is String) {
+          decoded['url'] = _buildAbsoluteUrl(decoded['url'] as String);
+        }
+        return decoded;
+      }
+
+      try {
+        return jsonDecode(responseBody) as Map<String, dynamic>;
+      } catch (_) {
+        return {'error': 'Error subiendo archivo'};
+      }
+    } catch (e) {
+      debugPrint('❌ Error subiendo archivo: $e');
       return {'error': e.toString()};
     }
   }
@@ -282,6 +436,8 @@ class ApiService {
     String? endDate,
     String? status,
     String? createdBy,
+    String? attachmentUrl,
+    String? attachmentType,
   }) async {
     try {
       final headers = await _getHeaders();
@@ -297,6 +453,8 @@ class ApiService {
           'end_date': endDate,
           'status': status ?? 'active',
           'created_by': createdBy,
+          'attachment_url': attachmentUrl,
+          'attachment_type': attachmentType,
         }),
       );
 
@@ -527,6 +685,118 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> updateRoutine(String routineId, Map<String, dynamic> data) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.put(
+        Uri.parse('$baseUrl/routines/$routineId'),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ Rutina actualizada en servidor');
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
+        throw Exception('Sesión expirada');
+      } else {
+        return {'error': 'Error actualizando rutina'};
+      }
+    } catch (e) {
+      debugPrint('❌ Error actualizando rutina: $e');
+      return {'error': e.toString()};
+    }
+  }
+
+  static Future<bool> deleteRoutine(String routineId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.delete(
+        Uri.parse('$baseUrl/routines/$routineId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ Rutina eliminada del servidor');
+        return true;
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
+        throw Exception('Sesión expirada');
+      } else {
+        throw Exception('Error eliminando rutina');
+      }
+    } catch (e) {
+      debugPrint('❌ Error eliminando rutina: $e');
+      return false;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getRoutineCompletions({
+    required String userId,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.get(
+        Uri.parse('$baseUrl/routines/$userId/completions'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((e) => e as Map<String, dynamic>).toList();
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
+        throw Exception('Sesión expirada');
+      }
+
+      throw Exception('Error obteniendo completados de rutinas');
+    } catch (e) {
+      debugPrint('❌ Error obteniendo completados de rutinas: $e');
+      rethrow;
+    }
+  }
+
+  static Future<bool> setRoutineCompletion({
+    required String routineId,
+    required String userId,
+    required DateTime completionDate,
+    required bool completed,
+    String? attachmentUrl,
+    String? attachmentType,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final dateString =
+          '${completionDate.year.toString().padLeft(4, '0')}-${completionDate.month.toString().padLeft(2, '0')}-${completionDate.day.toString().padLeft(2, '0')}';
+
+      final response = await _client.post(
+        Uri.parse('$baseUrl/routines/$routineId/completions'),
+        headers: headers,
+        body: jsonEncode({
+          'user_id': userId,
+          'completion_date': dateString,
+          'completed': completed,
+          'attachment_url': attachmentUrl,
+          'attachment_type': attachmentType,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
+        throw Exception('Sesión expirada');
+      }
+
+      debugPrint('❌ Error guardando completado de rutina: ${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('❌ Error guardando completado de rutina: $e');
+      return false;
+    }
+  }
+
   // ==================== GOALS ====================
 
   static Future<List<Map<String, dynamic>>> getGoals({String? userId}) async {
@@ -572,11 +842,48 @@ class ApiService {
         _handleUnauthorized();
         throw Exception('Sesión expirada');
       } else {
+        debugPrint('❌ Error creando objetivo: ${response.body}');
         return {'error': 'Error creando objetivo'};
       }
     } catch (e) {
       debugPrint('❌ Error creando objetivo: $e');
       return {'error': e.toString()};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateGoal(String goalId, Map<String, dynamic> data) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.put(
+        Uri.parse('$baseUrl/goals/$goalId'),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        _handleUnauthorized();
+        throw Exception('Sesión expirada');
+      } else {
+        return {'error': 'Error actualizando objetivo'};
+      }
+    } catch (e) {
+      debugPrint('❌ Error actualizando objetivo: $e');
+      return {'error': e.toString()};
+    }
+  }
+
+  static Future<bool> deleteGoal(String goalId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.delete(
+        Uri.parse('$baseUrl/goals/$goalId'),
+        headers: headers,
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('❌ Error eliminando objetivo: $e');
+      return false;
     }
   }
 

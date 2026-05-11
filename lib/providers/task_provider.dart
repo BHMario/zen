@@ -58,12 +58,22 @@ class TaskProvider extends ChangeNotifier {
             : DateTime.now(),
           status: _parseTaskStatus(taskData['status'] as String? ?? 'pending'),
           priority: _parseTaskPriority(taskData['priority'] as String? ?? 'medium'),
+          taskType: _parseTaskType(taskData['task_type'] as String? ?? 'other'),
           projectId: taskData['project_id'] as String?,
-          color: taskData['color'] as String? ?? '#6366F1',
+          color: taskData['color'] as String? ?? '#2A2A2A',
           labels: labels,
           createdBy: userId,
           createdAt: DateTime.parse(taskData['created_at'] as String),
           updatedAt: DateTime.parse(taskData['updated_at'] as String),
+          attachmentUrl: taskData['attachment_url'] as String?,
+          attachmentType: taskData['attachment_type'] as String?,
+            completedAt: taskData['completed_at'] != null
+              ? DateTime.parse(taskData['completed_at'] as String)
+              : null,
+            completionAttachmentUrl:
+              taskData['completion_attachment_url'] as String?,
+            completionAttachmentType:
+              taskData['completion_attachment_type'] as String?,
         );
       }).toList();
       _applyFilters();
@@ -120,7 +130,10 @@ class TaskProvider extends ChangeNotifier {
         'due_date': dueDateString,
         'status': task.status.toString().split('.').last,
         'priority': task.priority.toString().split('.').last,
+        'task_type': task.taskType.toString().split('.').last,
         'project_id': task.projectId,
+        'attachment_url': task.attachmentUrl,
+        'attachment_type': task.attachmentType,
         'color': task.color,
         'labels': task.labels,
         'created_by': task.createdBy,
@@ -149,10 +162,13 @@ class TaskProvider extends ChangeNotifier {
     String? description,
     required DateTime dueDate,
     TaskPriority priority = TaskPriority.medium,
-    String color = '#6366F1',
+    TaskType taskType = TaskType.other,
+    String color = '#2A2A2A',
     List<String> labels = const [],
     String? projectId,
     int? estimatedHours,
+    String? attachmentUrl,
+    String? attachmentType,
     String? userId, // Parámetro opcional para pasar el userId explícitamente
   }) async {
     // Determinar el userId a usar
@@ -172,6 +188,7 @@ class TaskProvider extends ChangeNotifier {
       description: description,
       dueDate: dueDate,
       priority: priority,
+      taskType: taskType,
       color: color,
       labels: labels,
       projectId: projectId,
@@ -179,6 +196,8 @@ class TaskProvider extends ChangeNotifier {
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       estimatedHours: estimatedHours,
+      attachmentUrl: attachmentUrl,
+      attachmentType: attachmentType,
     );
 
     await createTask(task);
@@ -206,7 +225,10 @@ class TaskProvider extends ChangeNotifier {
           'due_date': dueDateString,
           'status': updatedTask.status.toString().split('.').last,
           'priority': updatedTask.priority.toString().split('.').last,
+          'task_type': updatedTask.taskType.toString().split('.').last,
           'project_id': updatedTask.projectId,
+          'attachment_url': updatedTask.attachmentUrl,
+          'attachment_type': updatedTask.attachmentType,
           'color': updatedTask.color,
           'updated_at': DateTime.now().toIso8601String(),
         },
@@ -259,6 +281,27 @@ class TaskProvider extends ChangeNotifier {
       final updatedTask = _tasks[taskIndex].copyWith(
         status: TaskStatus.completed,
         actualHours: actualHours,
+        completedAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await updateTask(updatedTask);
+    }
+  }
+
+  Future<void> completeTaskWithAttachment(
+    String taskId, {
+    String? completionAttachmentUrl,
+    String? completionAttachmentType,
+    int? actualHours,
+  }) async {
+    final taskIndex = _tasks.indexWhere((t) => t.id == taskId);
+    if (taskIndex != -1) {
+      final updatedTask = _tasks[taskIndex].copyWith(
+        status: TaskStatus.completed,
+        actualHours: actualHours,
+        completedAt: DateTime.now(),
+        completionAttachmentUrl: completionAttachmentUrl,
+        completionAttachmentType: completionAttachmentType,
         updatedAt: DateTime.now(),
       );
       await updateTask(updatedTask);
@@ -272,6 +315,7 @@ class TaskProvider extends ChangeNotifier {
       final task = _tasks[taskIndex];
       final updatedTask = task.copyWith(
         status: newStatus,
+        completedAt: newStatus == TaskStatus.completed ? DateTime.now() : null,
         updatedAt: DateTime.now(),
       );
       await updateTask(updatedTask);
@@ -334,6 +378,21 @@ class TaskProvider extends ChangeNotifier {
     }
   }
 
+  // Parsear tipo de tarea
+  TaskType _parseTaskType(String type) {
+    switch (type) {
+      case 'sport':
+        return TaskType.sport;
+      case 'personal':
+        return TaskType.personal;
+      case 'work':
+        return TaskType.work;
+      case 'other':
+      default:
+        return TaskType.other;
+    }
+  }
+
   // Cargar tarea desde BD (usado por SyncService)
   Future<void> addTaskFromDb({
     required String id,
@@ -349,6 +408,8 @@ class TaskProvider extends ChangeNotifier {
     String? createdBy,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? attachmentUrl,
+    String? attachmentType,
   }) async {
     final task = Task(
       id: id,
@@ -358,11 +419,13 @@ class TaskProvider extends ChangeNotifier {
       status: _parseTaskStatus(status),
       priority: _parseTaskPriority(priority),
       projectId: projectId,
-      color: color ?? '#6366F1',
+      color: color ?? '#2A2A2A',
       labels: labels is String ? (labels.isEmpty ? [] : List<String>.from(labels.split(','))) : List<String>.from(labels ?? []),
       createdBy: createdBy ?? userId,
       createdAt: createdAt ?? DateTime.now(),
       updatedAt: updatedAt ?? DateTime.now(),
+      attachmentUrl: attachmentUrl,
+      attachmentType: attachmentType,
     );
     _tasks.add(task);
   }

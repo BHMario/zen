@@ -32,7 +32,10 @@ module.exports = (pool) => {
         due_date,
         status,
         priority,
+        task_type,
         project_id,
+        attachment_url,
+        attachment_type,
         color,
         labels,
         created_by
@@ -68,7 +71,10 @@ module.exports = (pool) => {
         normalizedDueDate,
         status || 'pending',
         priority || 'medium',
+        task_type || 'other',
         project_id === undefined ? null : project_id,
+        attachment_url === undefined ? null : attachment_url,
+        attachment_type === undefined ? null : attachment_type,
         color === undefined ? null : color,
         labels ? JSON.stringify(labels) : null,
         created_by || user_id
@@ -77,8 +83,8 @@ module.exports = (pool) => {
       console.log('📝 Creando tarea con parámetros:', params);
 
       await connection.execute(
-        `INSERT INTO tasks (id, user_id, title, description, due_date, status, priority, project_id, color, labels, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO tasks (id, user_id, title, description, due_date, status, priority, task_type, project_id, attachment_url, attachment_type, color, labels, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         params
       );
 

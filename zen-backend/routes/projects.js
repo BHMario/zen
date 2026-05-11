@@ -24,7 +24,7 @@ module.exports = (pool) => {
   // Crear proyecto
   router.post('/', async (req, res) => {
     try {
-      const { user_id, name, description, color, start_date, end_date, status, created_by } = req.body;
+      const { user_id, name, description, color, start_date, end_date, status, created_by, attachment_url, attachment_type } = req.body;
       if (!user_id || !name) {
         return res.status(400).json({ error: 'user_id y name son requeridos' });
       }
@@ -51,6 +51,8 @@ module.exports = (pool) => {
         user_id,
         name,
         description === undefined ? null : description,
+        attachment_url === undefined ? null : attachment_url,
+        attachment_type === undefined ? null : attachment_type,
         color === undefined ? null : color,
         start_date === undefined ? null : start_date,
         end_date === undefined ? null : end_date,
@@ -61,8 +63,8 @@ module.exports = (pool) => {
       console.log('📝 Creando proyecto con parámetros:', params);
 
       await connection.execute(
-        `INSERT INTO projects (id, user_id, name, description, color, start_date, end_date, status, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO projects (id, user_id, name, description, attachment_url, attachment_type, color, start_date, end_date, status, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         params
       );
 

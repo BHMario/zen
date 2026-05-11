@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:zen/models/models.dart';
 import 'package:zen/providers/providers.dart';
+import 'package:zen/services/services.dart';
 import 'package:zen/theme/zen_theme.dart';
 
 class AddCalendarItemDialog extends StatefulWidget {
@@ -30,19 +32,27 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   DateTime? _projectStartDate;
   DateTime? _projectEndDate;
   TaskPriority _priority = TaskPriority.medium;
-  String _selectedColor = '#6366F1';
+  TaskType _taskType = TaskType.other;
+  GoalCategory _goalCategory = GoalCategory.other;
+  GoalTimeframe _goalTimeframe = GoalTimeframe.mediumTerm;
+  String _selectedColor = '#2A2A2A';
   List<String> _selectedLabels = [];
+  String? _attachmentUrl;
+  String? _attachmentType;
+  String? _attachmentName;
+  bool _isUploadingAttachment = false;
   bool _setReminder = false;
   DateTime? _reminderDateTime;
 
   final List<String> _availableColors = [
-    '#6366F1', // Indigo
-    '#8B5CF6', // Purple
-    '#EC4899', // Pink
-    '#F59E0B', // Amber
-    '#10B981', // Emerald
-    '#3B82F6', // Blue
-    '#EF4444', // Red
+    '#111111', // Black
+    '#2A2A2A', // Charcoal
+    '#4A4A4A', // Dark Gray
+    '#8E8E8E', // Medium Gray
+    '#C9C9C9', // Light Gray
+    '#2E7D32', // Green
+    '#F2C94C', // Yellow
+    '#D32F2F', // Red
   ];
 
   @override
@@ -57,6 +67,45 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     _projectStartDate = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
     _projectEndDate = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
     _reminderDateTime = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
+  }
+
+  Future<void> _pickAttachment() async {
+    setState(() => _isUploadingAttachment = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'mov'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        return;
+      }
+
+      final file = result.files.first;
+      final uploadResult = await ApiService.uploadAttachment(file);
+
+      if (uploadResult.containsKey('error')) {
+        throw Exception(uploadResult['error']);
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _attachmentUrl = uploadResult['url'] as String?;
+        _attachmentType = uploadResult['kind'] as String?;
+        _attachmentName = uploadResult['fileName'] as String? ?? file.name;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo subir el adjunto: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingAttachment = false);
+      }
+    }
   }
 
   @override
@@ -80,6 +129,17 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
           await _addTask();
           break;
         case 'project':
+          // Validaciones extendidas para proyectos
+          final error = _validateProject();
+          if (error != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(error),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+            return;
+          }
           await _addProject();
           break;
         case 'routine':
@@ -134,6 +194,89 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     }
   }
 
+  String _getTaskTypeLabel(TaskType type) {
+    switch (type) {
+      case TaskType.sport:
+        return '⚽ Deporte';
+      case TaskType.personal:
+        return '🧘 Personal';
+      case TaskType.work:
+        return '💼 Trabajo';
+      case TaskType.other:
+        return '📋 Otro';
+    }
+  }
+
+  String _goalCategoryLabel(GoalCategory category) {
+    switch (category) {
+      case GoalCategory.health:
+        return 'Salud';
+      case GoalCategory.career:
+        return 'Carrera';
+      case GoalCategory.personal:
+        return 'Personal';
+      case GoalCategory.finance:
+        return 'Finanzas';
+      case GoalCategory.education:
+        return 'Educación';
+      case GoalCategory.relationships:
+        return 'Relaciones';
+      case GoalCategory.other:
+        return 'Otro';
+    }
+  }
+
+  String _goalTimeframeLabel(GoalTimeframe timeframe) {
+    switch (timeframe) {
+      case GoalTimeframe.shortTerm:
+        return 'Corto plazo';
+      case GoalTimeframe.mediumTerm:
+        return 'Medio plazo';
+      case GoalTimeframe.longTerm:
+        return 'Largo plazo';
+    }
+  }
+
+  // Validación robusta para proyectos
+  String? _validateProject() {
+    final name = _titleController.text.trim();
+    
+    // 1. Longitud mínima del nombre (Evita nombres vacíos o poco descriptivos)
+    if (name.length < 3) {
+      return 'El nombre del proyecto debe tener al menos 3 caracteres';
+    }
+
+    // 2. Validación de fechas
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final start = _projectStartDate ?? today;
+    final end = _projectEndDate;
+
+    // Fecha de inicio no puede ser anterior a hoy (Evita proyectos retroactivos sin sentido)
+    if (start.isBefore(today)) {
+      return 'La fecha de inicio no puede ser anterior a hoy';
+    }
+
+    // Si hay fecha de fin, debe ser posterior o igual al inicio
+    if (end != null) {
+      if (end.isBefore(start)) {
+        return 'La fecha de fin no puede ser anterior al inicio';
+      }
+
+      // 3. Validación de duración razonable (Zen promueve objetivos alcanzables)
+      // Evitamos proyectos de más de 5 años para prevenir errores de entrada de datos
+      final maxDuration = const Duration(days: 365 * 5);
+      if (end.difference(start).abs() > maxDuration) {
+        return 'Un proyecto no puede durar más de 5 años';
+      }
+    } else {
+      // Un proyecto en Zen DEBE tener fecha de fin para fomentar la acción (opcional según el diseño, pero aquí lo haremos recomendado)
+      return 'Por favor, selecciona una fecha de fin proyectada';
+    }
+
+    return null; // Todo correcto
+  }
+
   Future<void> _addTask() async {
     final authProvider = context.read<AuthProvider>();
     final userId = authProvider.currentUser?.id;
@@ -147,9 +290,12 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
       description: _descriptionController.text,
       dueDate: _dueDate ?? widget.selectedDate,
       priority: _priority,
+      taskType: _taskType,
       color: _selectedColor,
       labels: _selectedLabels,
       projectId: _selectedProjectId,
+      attachmentUrl: _attachmentUrl,
+      attachmentType: _attachmentType,
       userId: userId,
     );
 
@@ -177,6 +323,8 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
       color: _selectedColor,
       startDate: _projectStartDate ?? widget.selectedDate,
       endDate: _projectEndDate,
+      attachmentUrl: _attachmentUrl,
+      attachmentType: _attachmentType,
       userId: userId,
     );
 
@@ -230,10 +378,12 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     await context.read<GoalProvider>().addGoal(
       title: _titleController.text,
       description: _descriptionController.text,
-      category: GoalCategory.other,
-      timeframe: GoalTimeframe.mediumTerm,
+      category: _goalCategory,
+      timeframe: _goalTimeframe,
       startDate: widget.selectedDate,
       targetDate: _dueDate ?? widget.selectedDate.add(const Duration(days: 30)),
+      targetValue: 100,
+      unit: '%',
       color: _selectedColor,
       userId: userId,
     );
@@ -261,7 +411,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Crear Nueva Tarea',
+                'Crear ${_getTypeLabel(_selectedType)}',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 24),
@@ -344,15 +494,23 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                 // Fecha de inicio
                 GestureDetector(
                   onTap: () async {
+                    final now = DateTime.now();
+                    final today = DateTime(now.year, now.month, now.day);
+                    
                     final picked = await showDatePicker(
                       context: context,
-                      initialDate: _projectStartDate ?? DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day),
-                      firstDate: DateTime(DateTime.now().year - 1),
-                      lastDate: DateTime.now().add(const Duration(days: 730)),
+                      initialDate: _projectStartDate ?? (widget.selectedDate.isBefore(today) ? today : widget.selectedDate),
+                      firstDate: today, // Evita seleccionar fechas pasadas
+                      lastDate: today.add(const Duration(days: 365 * 5)), // Máximo 5 años a futuro
                     );
                     if (picked != null) {
-                      // Normalizar la fecha seleccionada para evitar problemas de zona horaria
-                      setState(() => _projectStartDate = DateTime(picked.year, picked.month, picked.day));
+                      setState(() {
+                        _projectStartDate = DateTime(picked.year, picked.month, picked.day);
+                        // Si la fecha de fin es ahora anterior a la nueva fecha de inicio, la reseteamos o ajustamos
+                        if (_projectEndDate != null && _projectEndDate!.isBefore(_projectStartDate!)) {
+                          _projectEndDate = _projectStartDate;
+                        }
+                      });
                     }
                   },
                   child: Container(
@@ -389,14 +547,17 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                 // Fecha de fin
                 GestureDetector(
                   onTap: () async {
+                    final now = DateTime.now();
+                    final today = DateTime(now.year, now.month, now.day);
+                    final start = _projectStartDate ?? today;
+
                     final picked = await showDatePicker(
                       context: context,
-                      initialDate: _projectEndDate ?? (_projectStartDate ?? DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day)),
-                      firstDate: _projectStartDate ?? DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day),
-                      lastDate: DateTime.now().add(const Duration(days: 730)),
+                      initialDate: _projectEndDate ?? start,
+                      firstDate: start, // No puede terminar antes de empezar
+                      lastDate: start.add(const Duration(days: 365 * 5)),
                     );
                     if (picked != null) {
-                      // Normalizar la fecha seleccionada para evitar problemas de zona horaria
                       setState(() => _projectEndDate = DateTime(picked.year, picked.month, picked.day));
                     }
                   },
@@ -453,6 +614,25 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                   },
                 ),
                 const SizedBox(height: 16),
+                // Tipo de tarea
+                DropdownButtonFormField<TaskType>(
+                  value: _taskType,
+                  decoration: const InputDecoration(
+                    hintText: 'Selecciona tipo de tarea',
+                    labelText: 'Tipo',
+                    prefixIcon: Icon(Icons.label_outlined),
+                  ),
+                  items: TaskType.values
+                      .map((t) => DropdownMenuItem(
+                        value: t,
+                        child: Text(_getTaskTypeLabel(t)),
+                      ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _taskType = value);
+                  },
+                ),
+                const SizedBox(height: 16),
                 // Proyecto (opcional)
                 Consumer<ProjectProvider>(
                   builder: (context, projectProvider, child) {
@@ -477,6 +657,121 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                     );
                   },
                 ),
+                const SizedBox(height: 16),
+              ],
+
+              if (_selectedType == 'task' || _selectedType == 'project') ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: ZenTheme.borderColor),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Adjunto (opcional)',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'No es obligatorio. Puedes subir una imagen o video como recuerdo.',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: ZenTheme.textLight),
+                      ),
+                      const SizedBox(height: 10),
+                      if (_attachmentUrl == null)
+                        OutlinedButton.icon(
+                          onPressed: _isUploadingAttachment ? null : _pickAttachment,
+                          icon: _isUploadingAttachment
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.attach_file),
+                          label: Text(_isUploadingAttachment
+                              ? 'Subiendo...'
+                              : 'Adjuntar imagen/video'),
+                        )
+                      else
+                        Row(
+                          children: [
+                            Icon(
+                              _attachmentType == 'video'
+                                  ? Icons.videocam_outlined
+                                  : Icons.image_outlined,
+                              color: ZenTheme.textDark,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _attachmentName ?? 'Archivo adjunto',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _attachmentUrl = null;
+                                  _attachmentType = null;
+                                  _attachmentName = null;
+                                });
+                              },
+                              tooltip: 'Quitar adjunto',
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Formulario específico de objetivos
+              if (_selectedType == 'goal') ...[
+                DropdownButtonFormField<GoalCategory>(
+                  value: _goalCategory,
+                  decoration: const InputDecoration(
+                    hintText: 'Selecciona categoría',
+                    labelText: 'Categoría',
+                    prefixIcon: Icon(Icons.category_outlined),
+                  ),
+                  items: GoalCategory.values
+                      .map((c) => DropdownMenuItem(
+                            value: c,
+                            child: Text(_goalCategoryLabel(c)),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _goalCategory = value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<GoalTimeframe>(
+                  value: _goalTimeframe,
+                  decoration: const InputDecoration(
+                    hintText: 'Selecciona plazo',
+                    labelText: 'Plazo',
+                    prefixIcon: Icon(Icons.timeline_outlined),
+                  ),
+                  items: GoalTimeframe.values
+                      .map((t) => DropdownMenuItem(
+                            value: t,
+                            child: Text(_goalTimeframeLabel(t)),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _goalTimeframe = value);
+                  },
+                ),
+                const SizedBox(height: 16),
               ],
               
               // Color
@@ -586,7 +881,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: _addItem,
-                    child: const Text('Crear Tarea'),
+                    child: Text('Crear ${_getTypeLabel(_selectedType)}'),
                   ),
                 ],
               ),

@@ -1,5 +1,6 @@
 enum TaskStatus { pending, inProgress, completed, cancelled }
 enum TaskPriority { low, medium, high, urgent }
+enum TaskType { work, personal, sport, other }
 
 class Task {
   final String id;
@@ -18,6 +19,12 @@ class Task {
   final List<String> attachmentUrls;
   final int? estimatedHours;
   final int? actualHours;
+  final String? attachmentUrl;
+  final String? attachmentType;
+  final DateTime? completedAt;
+  final String? completionAttachmentUrl;
+  final String? completionAttachmentType;
+  final TaskType taskType;
 
   Task({
     required this.id,
@@ -28,7 +35,7 @@ class Task {
     this.priority = TaskPriority.medium,
     this.projectId,
     this.labels = const [],
-    this.color = '#6366f1',
+    this.color = '#2a2a2a',
     required this.createdBy,
     this.assignedTo = const [],
     required this.createdAt,
@@ -36,6 +43,12 @@ class Task {
     this.attachmentUrls = const [],
     this.estimatedHours,
     this.actualHours,
+    this.attachmentUrl,
+    this.attachmentType,
+    this.completedAt,
+    this.completionAttachmentUrl,
+    this.completionAttachmentType,
+    this.taskType = TaskType.other,
   });
 
   Task copyWith({
@@ -55,6 +68,12 @@ class Task {
     List<String>? attachmentUrls,
     int? estimatedHours,
     int? actualHours,
+    String? attachmentUrl,
+    String? attachmentType,
+    DateTime? completedAt,
+    String? completionAttachmentUrl,
+    String? completionAttachmentType,
+    TaskType? taskType,
   }) {
     return Task(
       id: id ?? this.id,
@@ -73,6 +92,14 @@ class Task {
       attachmentUrls: attachmentUrls ?? this.attachmentUrls,
       estimatedHours: estimatedHours ?? this.estimatedHours,
       actualHours: actualHours ?? this.actualHours,
+      attachmentUrl: attachmentUrl ?? this.attachmentUrl,
+      attachmentType: attachmentType ?? this.attachmentType,
+      completedAt: completedAt ?? this.completedAt,
+      completionAttachmentUrl:
+          completionAttachmentUrl ?? this.completionAttachmentUrl,
+      completionAttachmentType:
+          completionAttachmentType ?? this.completionAttachmentType,
+      taskType: taskType ?? this.taskType,
     );
   }
 
@@ -94,6 +121,12 @@ class Task {
       'attachmentUrls': attachmentUrls,
       'estimatedHours': estimatedHours,
       'actualHours': actualHours,
+      'attachmentUrl': attachmentUrl,
+      'attachmentType': attachmentType,
+      'completedAt': completedAt?.toIso8601String(),
+      'completionAttachmentUrl': completionAttachmentUrl,
+      'completionAttachmentType': completionAttachmentType,
+      'taskType': taskType.name,
     };
   }
 
@@ -115,6 +148,14 @@ class Task {
       attachmentUrls: List<String>.from(map['attachmentUrls'] as List<dynamic>? ?? []),
       estimatedHours: map['estimatedHours'] as int?,
       actualHours: map['actualHours'] as int?,
+      attachmentUrl: map['attachmentUrl'] as String?,
+      attachmentType: map['attachmentType'] as String?,
+      completedAt: map['completedAt'] != null
+          ? DateTime.parse(map['completedAt'] as String)
+          : null,
+      completionAttachmentUrl: map['completionAttachmentUrl'] as String?,
+      completionAttachmentType: map['completionAttachmentType'] as String?,
+      taskType: TaskType.values.byName(map['taskType'] as String? ?? 'other'),
     );
   }
 

@@ -19,6 +19,344 @@ class _CalendarScreenState extends State<CalendarScreen> {
   late DateTime _displayedMonth;
   String _filterType = 'all'; // all, tasks, projects, routines, goals
 
+  Future<void> _toggleTaskComplete(Task task) async {
+    final provider = context.read<TaskProvider>();
+    try {
+      if (task.status == TaskStatus.completed) {
+        await provider.updateTaskStatus(task.id, TaskStatus.pending);
+      } else {
+        await provider.completeTask(task.id);
+
+        final updatedTask = provider.tasks.firstWhere((t) => t.id == task.id);
+        final completionData = await CompletionDialog.showCelebrationAndAttach(
+          context,
+          itemTypeLabel: 'Tarea',
+          title: updatedTask.title,
+          startedAt: updatedTask.createdAt,
+          completedAt: updatedTask.completedAt ?? DateTime.now(),
+        );
+
+        final url = completionData?['completionAttachmentUrl'];
+        final type = completionData?['completionAttachmentType'];
+        if (url != null) {
+          await provider.updateTask(
+            updatedTask.copyWith(
+              completionAttachmentUrl: url,
+              completionAttachmentType: type,
+              updatedAt: DateTime.now(),
+            ),
+          );
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              task.status == TaskStatus.completed
+                  ? 'Tarea reactivada'
+                  : 'Tarea completada',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error actualizando tarea: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteTask(Task task) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar tarea'),
+        content: Text('¿Eliminar "${task.title}"? Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: ZenTheme.errorColor),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await context.read<TaskProvider>().deleteTask(task.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tarea eliminada')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error eliminando tarea: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _editTask(Task task) async {
+    final titleController = TextEditingController(text: task.title);
+    final descController = TextEditingController(text: task.description ?? '');
+    TaskPriority selectedPriority = task.priority;
+    DateTime selectedDate = task.dueDate;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocalState) => AlertDialog(
+            title: const Text('Editar tarea'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(labelText: 'Título'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(labelText: 'Descripción'),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<TaskPriority>(
+                    value: selectedPriority,
+                    decoration: const InputDecoration(labelText: 'Prioridad'),
+                    items: TaskPriority.values
+                        .map(
+                          (p) => DropdownMenuItem(
+                            value: p,
+                            child: Text(_getPriorityLabel(p)),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setLocalState(() => selectedPriority = value);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Fecha límite'),
+                    subtitle: Text(DateFormat('dd/MM/yyyy').format(selectedDate)),
+                    trailing: const Icon(Icons.calendar_today_outlined),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: ctx,
+                        initialDate: selectedDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2100),
+                      );
+                      if (picked != null) {
+                        setLocalState(() => selectedDate = picked);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Guardar'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (saved != true) {
+      titleController.dispose();
+      descController.dispose();
+      return;
+    }
+
+    try {
+      final updatedTask = task.copyWith(
+        title: titleController.text.trim(),
+        description: descController.text.trim().isEmpty
+            ? null
+            : descController.text.trim(),
+        dueDate: selectedDate,
+        priority: selectedPriority,
+        updatedAt: DateTime.now(),
+      );
+      await context.read<TaskProvider>().updateTask(updatedTask);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tarea actualizada')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error actualizando tarea: $e')),
+        );
+      }
+    } finally {
+      titleController.dispose();
+      descController.dispose();
+    }
+  }
+
+  Future<void> _updateGoalProgress(Goal goal) async {
+    final controller = TextEditingController(text: goal.currentValue.toString());
+    final updated = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Actualizar progreso'),
+        content: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            labelText: 'Progreso (%)',
+            hintText: '0 a 100',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final parsed = double.tryParse(controller.text.trim());
+              Navigator.of(ctx).pop(parsed);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+    if (updated == null) return;
+
+    try {
+      final wasCompleted = goal.isCompleted;
+      await context.read<GoalProvider>().updateProgress(goal.id, updated);
+
+      final refreshedGoal = context
+          .read<GoalProvider>()
+          .goals
+          .firstWhere((g) => g.id == goal.id);
+      if (!wasCompleted && refreshedGoal.isCompleted) {
+        final completionData = await CompletionDialog.showCelebrationAndAttach(
+          context,
+          itemTypeLabel: 'Objetivo',
+          title: refreshedGoal.title,
+          startedAt: refreshedGoal.startDate,
+          completedAt: DateTime.now(),
+        );
+
+        final url = completionData?['completionAttachmentUrl'];
+        final type = completionData?['completionAttachmentType'];
+        if (url != null) {
+          await context.read<GoalProvider>().updateGoal(
+                refreshedGoal.copyWith(
+                  completionAttachmentUrl: url,
+                  completionAttachmentType: type,
+                  completedAt: refreshedGoal.completedAt ?? DateTime.now(),
+                  updatedAt: DateTime.now(),
+                ),
+              );
+        }
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Progreso actualizado')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error actualizando progreso: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleRoutineComplete(Routine routine) async {
+    final provider = context.read<RoutineProvider>();
+    try {
+      final wasCompleted =
+          provider.isRoutineCompletedOnDate(routine.id, _selectedDate);
+      if (wasCompleted) {
+        await provider.setRoutineCompletedForDate(
+          routineId: routine.id,
+          date: _selectedDate,
+          completed: false,
+        );
+      } else {
+        await provider.setRoutineCompletedForDate(
+          routineId: routine.id,
+          date: _selectedDate,
+          completed: true,
+        );
+
+        final completionData = await CompletionDialog.showCelebrationAndAttach(
+          context,
+          itemTypeLabel: 'Rutina',
+          title: routine.name,
+          startedAt: routine.createdAt,
+          completedAt: _selectedDate,
+        );
+
+        final url = completionData?['completionAttachmentUrl'];
+        final type = completionData?['completionAttachmentType'];
+        if (url != null) {
+          await provider.setRoutineCompletedForDate(
+            routineId: routine.id,
+            date: _selectedDate,
+            completed: true,
+            attachmentUrl: url,
+            attachmentType: type,
+          );
+        }
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              wasCompleted
+                  ? 'Rutina marcada como pendiente para este día'
+                  : 'Rutina completada para este día',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error actualizando rutina: $e')),
+        );
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -149,7 +487,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget _buildCalendarGrid(BuildContext context) {
     final firstDay =
         DateTime(_displayedMonth.year, _displayedMonth.month, 1);
-    final lastDay = DateTime(_displayedMonth.year, _displayedMonth.month + 1, 0);
     final firstWeekday = firstDay.weekday;
 
     // Calcular la primera fecha a mostrar (puede ser del mes anterior)
@@ -296,6 +633,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           routineProvider,
           goalProvider,
         );
+        final weeklyRoutinesDone =
+            routineProvider.getCompletedCountForWeek(_selectedDate);
 
         debugPrint('📅 Items para ${_selectedDate.toIso8601String()}: ${items.length}');
 
@@ -317,6 +656,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       Text(
                         DateTimeUtils.getRelativeDate(_selectedDate),
                         style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Rutinas completadas esta semana: $weeklyRoutinesDone',
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelSmall
+                            ?.copyWith(color: ZenTheme.successColor),
                       ),
                     ],
                   ),
@@ -366,69 +713,190 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     final item = items[index];
                     final itemColor = _getItemColor(item);
                     final itemType = _getItemType(item);
-                    final itemTitle = _getItemTitle(item);
+                    final itemTitle = _getItemTitle(item, projectProvider);
                     final itemDescription = _getItemDescription(item);
+                    final isTask = item is Task;
+                    final isGoal = item is Goal;
+                    final isRoutine = item is Routine;
+                    final isRoutineCompletedToday = isRoutine
+                        ? routineProvider.isRoutineCompletedOnDate(
+                            item.id,
+                            _selectedDate,
+                          )
+                        : false;
 
-                    return Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: itemColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: itemColor.withValues(alpha: 0.3)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 24,
-                                decoration: BoxDecoration(
-                                  color: itemColor,
-                                  borderRadius: BorderRadius.circular(2),
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () async {
+                        if (isTask) {
+                          if (item.status == TaskStatus.completed) {
+                            await CompletionDialog.showSummary(
+                              context,
+                              itemTypeLabel: 'Tarea',
+                              title: item.title,
+                              startedAt: item.createdAt,
+                              completedAt: item.completedAt ?? item.updatedAt,
+                              attachmentUrl: item.completionAttachmentUrl,
+                              attachmentType: item.completionAttachmentType,
+                            );
+                            return;
+                          }
+                          TaskDetailSheet.show(
+                            context,
+                            item,
+                            onEdit: () => _editTask(item),
+                            onDelete: () => _deleteTask(item),
+                            onToggleComplete: () => _toggleTaskComplete(item),
+                          );
+                          return;
+                        }
+
+                        if (isRoutine && isRoutineCompletedToday) {
+                          final completionInfo = routineProvider.getRoutineCompletionForDate(
+                            item.id,
+                            _selectedDate,
+                          );
+                          await CompletionDialog.showSummary(
+                            context,
+                            itemTypeLabel: 'Rutina',
+                            title: item.name,
+                            startedAt: item.createdAt,
+                            completedAt: completionInfo?.completedAt ?? _selectedDate,
+                            attachmentUrl: completionInfo?.attachmentUrl,
+                            attachmentType: completionInfo?.attachmentType,
+                          );
+                          return;
+                        }
+
+                        if (isGoal && item.isCompleted) {
+                          await CompletionDialog.showSummary(
+                            context,
+                            itemTypeLabel: 'Objetivo',
+                            title: item.title,
+                            startedAt: item.startDate,
+                            completedAt: item.completedAt ?? item.updatedAt,
+                            attachmentUrl: item.completionAttachmentUrl,
+                            attachmentType: item.completionAttachmentType,
+                          );
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: itemColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: itemColor.withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 4,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    color: itemColor,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      itemTitle,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(fontWeight: FontWeight.w600),
-                                    ),
-                                    if (itemDescription != null)
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
                                       Text(
-                                        itemDescription,
+                                        itemTitle,
                                         style: Theme.of(context)
                                             .textTheme
-                                            .bodySmall,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
+                                            .bodyMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            decoration: isRoutineCompletedToday
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                          ),
                                       ),
-                                  ],
+                                      if (itemDescription != null)
+                                        Text(
+                                          itemDescription,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              Chip(
-                                label: Text(
-                                  itemType,
-                                  style: const TextStyle(fontSize: 10),
+                                Chip(
+                                  label: Text(
+                                    itemType,
+                                    style: const TextStyle(fontSize: 10),
+                                  ),
+                                  visualDensity: VisualDensity.compact,
                                 ),
-                                visualDensity: VisualDensity.compact,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 4,
-                            children: _getItemChips(item, context),
-                          ),
-                        ],
+                                if (isTask)
+                                  PopupMenuButton<String>(
+                                    onSelected: (value) {
+                                      if (value == 'complete') {
+                                        _toggleTaskComplete(item);
+                                      } else if (value == 'edit') {
+                                        _editTask(item);
+                                      } else if (value == 'delete') {
+                                        _deleteTask(item);
+                                      }
+                                    },
+                                    itemBuilder: (ctx) => [
+                                      PopupMenuItem(
+                                        value: 'complete',
+                                        child: Text(
+                                          item.status == TaskStatus.completed
+                                              ? 'Marcar pendiente'
+                                              : 'Marcar completada',
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'edit',
+                                        child: Text('Editar'),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'delete',
+                                        child: Text('Eliminar'),
+                                      ),
+                                    ],
+                                  ),
+                                if (isGoal)
+                                  IconButton(
+                                    tooltip: 'Actualizar progreso',
+                                    onPressed: () => _updateGoalProgress(item),
+                                    icon: const Icon(Icons.trending_up),
+                                  ),
+                                if (isRoutine)
+                                  IconButton(
+                                    tooltip: isRoutineCompletedToday
+                                        ? 'Marcar pendiente hoy'
+                                        : 'Marcar completada hoy',
+                                    onPressed: () => _toggleRoutineComplete(item),
+                                    icon: Icon(
+                                      isRoutineCompletedToday
+                                          ? Icons.check_circle
+                                          : Icons.check_circle_outline,
+                                      color: isRoutineCompletedToday
+                                          ? ZenTheme.successColor
+                                          : null,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: _getItemChips(item, context),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -453,6 +921,41 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  String _getPriorityLabel(TaskPriority priority) {
+    switch (priority) {
+      case TaskPriority.low:
+        return 'Baja';
+      case TaskPriority.medium:
+        return 'Media';
+      case TaskPriority.high:
+        return 'Alta';
+      case TaskPriority.urgent:
+        return 'Urgente';
+    }
+  }
+
+  String _getProjectStatusLabel(ProjectStatus status) {
+    switch (status) {
+      case ProjectStatus.planning:
+        return 'Planificación';
+      case ProjectStatus.active:
+        return 'Activo';
+      case ProjectStatus.onHold:
+        return 'En pausa';
+      case ProjectStatus.completed:
+        return 'Completado';
+    }
+  }
+
+  String _getRoutineFrequencyLabel(Routine routine) {
+    final days = routine.repeatEveryDays;
+    if (days == 1) return 'Diaria';
+    if (days == 7) return 'Semanal';
+    if (days == 14) return 'Cada 2 semanas';
+    if (days == 30) return 'Mensual';
+    return 'Cada $days días';
+  }
+
   // Métodos para obtener items filtrados
   List<dynamic> _getFilteredItemsForDate(
     DateTime date,
@@ -464,7 +967,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final items = <dynamic>[];
 
     if (_filterType == 'all' || _filterType == 'tasks') {
-      items.addAll(taskProvider.getTasksByDate(date, includeProjectTasks: false));
+      items.addAll(taskProvider.getTasksByDate(date, includeProjectTasks: true));
     }
 
     if (_filterType == 'all' || _filterType == 'projects') {
@@ -483,19 +986,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Color _getItemColor(dynamic item) {
-    String colorHex = '#6366F1';
-    
-    if (item is Task) {
-      colorHex = item.color;
-    } else if (item is Project) {
-      colorHex = item.color;
-    } else if (item is Routine) {
-      colorHex = item.color;
-    } else if (item is Goal) {
-      colorHex = item.color;
-    }
-
-    return Color(int.parse('0xFF${colorHex.substring(1)}'));
+    return ZenTheme.secondaryColor;
   }
 
   String _getItemType(dynamic item) {
@@ -511,9 +1002,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return 'Item';
   }
 
-  String _getItemTitle(dynamic item) {
+  String _getItemTitle(dynamic item, ProjectProvider projectProvider) {
     if (item is Task) {
-      return item.title;
+      if (item.projectId == null) return item.title;
+      final projectName = projectProvider.getProjectById(item.projectId!)?.name;
+      if (projectName == null || projectName.isEmpty) return item.title;
+      return '${item.title} (Proyecto $projectName)';
     } else if (item is Project) {
       return item.getDateLabel(_selectedDate);
     } else if (item is Routine) {
@@ -541,6 +1035,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final chips = <Widget>[];
 
     if (item is Task) {
+      if (item.projectId != null) {
+        final projectName = context
+            .read<ProjectProvider>()
+            .getProjectById(item.projectId!)
+            ?.name;
+        if (projectName != null && projectName.isNotEmpty) {
+          chips.add(Chip(
+            label: Text(
+              'Proyecto $projectName',
+              style: const TextStyle(fontSize: 10),
+            ),
+            visualDensity: VisualDensity.compact,
+            backgroundColor: ZenTheme.secondaryLight,
+          ));
+        }
+      }
+
       // Agregar labels
       for (final label in item.labels) {
         chips.add(Chip(
@@ -552,33 +1063,57 @@ class _CalendarScreenState extends State<CalendarScreen> {
       // Agregar estado
       chips.add(Chip(
         label: Text(
+          'Entrega ${DateFormat('dd/MM').format(item.dueDate)}',
+          style: const TextStyle(fontSize: 10),
+        ),
+        visualDensity: VisualDensity.compact,
+        backgroundColor: ZenTheme.dividerColor,
+      ));
+
+      chips.add(Chip(
+        label: Text(
           _getStatusLabel(item.status),
           style: const TextStyle(fontSize: 10),
         ),
         visualDensity: VisualDensity.compact,
         backgroundColor: item.status == TaskStatus.completed
-            ? Colors.green.withValues(alpha: 0.2)
+            ? ZenTheme.successColor.withValues(alpha: 0.2)
             : item.status == TaskStatus.inProgress
-                ? Colors.blue.withValues(alpha: 0.2)
-                : Colors.grey.withValues(alpha: 0.2),
+                ? ZenTheme.warningColor.withValues(alpha: 0.2)
+                : ZenTheme.borderColor,
       ));
     } else if (item is Project) {
       chips.add(Chip(
         label: Text(
-          item.status.toString().split('.').last.toUpperCase(),
+          _getProjectStatusLabel(item.status),
           style: const TextStyle(fontSize: 10),
         ),
         visualDensity: VisualDensity.compact,
-        backgroundColor: Colors.blue.withValues(alpha: 0.2),
+        backgroundColor: ZenTheme.secondaryLight,
       ));
     } else if (item is Routine) {
+      final routineProvider = context.read<RoutineProvider>();
+      final completedToday =
+          routineProvider.isRoutineCompletedOnDate(item.id, _selectedDate);
+
       chips.add(Chip(
         label: Text(
-          item.frequency.toString().split('.').last.toUpperCase(),
+          _getRoutineFrequencyLabel(item),
           style: const TextStyle(fontSize: 10),
         ),
         visualDensity: VisualDensity.compact,
-        backgroundColor: Colors.purple.withValues(alpha: 0.2),
+        backgroundColor: ZenTheme.secondaryLight,
+      ));
+
+      chips.add(Chip(
+        label: Text(
+          completedToday ? 'Completada hoy' : 'Pendiente hoy',
+          style: const TextStyle(fontSize: 10),
+        ),
+        visualDensity: VisualDensity.compact,
+        backgroundColor: completedToday
+            ? ZenTheme.successColor.withValues(alpha: 0.2)
+            : ZenTheme.borderColor,
       ));
     } else if (item is Goal) {
       chips.add(Chip(
@@ -588,8 +1123,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         visualDensity: VisualDensity.compact,
         backgroundColor: item.isCompleted
-            ? Colors.green.withValues(alpha: 0.2)
-            : Colors.orange.withValues(alpha: 0.2),
+            ? ZenTheme.successColor.withValues(alpha: 0.2)
+            : ZenTheme.warningColor.withValues(alpha: 0.2),
       ));
     }
 

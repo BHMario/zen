@@ -7,6 +7,7 @@ class TokenService {
   static const String _userNameKey = 'user_name';
   static const String _userEmailKey = 'user_email';
   static const String _profileImagePathKey = 'profile_image_path';
+  static const String _avatarColorKey = 'avatar_bg_color';
 
   /// Guardar token y datos de usuario después del login
   static Future<void> saveToken({
@@ -62,6 +63,18 @@ class TokenService {
   static Future<void> removeProfileImagePath() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_profileImagePathKey);
+  }
+
+  /// Guardar color de fondo del avatar
+  static Future<void> saveAvatarColor(String colorHex) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_avatarColorKey, colorHex);
+  }
+
+  /// Obtener color de fondo del avatar guardado
+  static Future<String?> getAvatarColor() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_avatarColorKey);
   }
 
   /// Verificar si hay sesión activa
