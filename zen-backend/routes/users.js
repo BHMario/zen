@@ -11,7 +11,7 @@ module.exports = (pool) => {
       const connection = await pool.getConnection();
 
       const [rows] = await connection.execute(
-        'SELECT id, name, email, phone, share_analytics, show_active_status, app_lock_enabled, created_at, updated_at FROM users WHERE id = ?',
+        'SELECT id, name, email, phone, share_analytics, show_active_status, app_lock_enabled, marketing_emails, profile_private, created_at, updated_at FROM users WHERE id = ?',
         [userId]
       );
 
@@ -126,10 +126,10 @@ module.exports = (pool) => {
       const userData = userRows[0];
 
       // Obtener tareas, proyectos, objetivos y rutinas
-      const [tasks] = await connection.execute('SELECT * FROM tasks WHERE userId = ?', [userId]);
-      const [projects] = await connection.execute('SELECT * FROM projects WHERE userId = ?', [userId]);
-      const [goals] = await connection.execute('SELECT * FROM goals WHERE userId = ?', [userId]);
-      const [routines] = await connection.execute('SELECT * FROM routines WHERE userId = ?', [userId]);
+      const [tasks] = await connection.execute('SELECT * FROM tasks WHERE user_id = ?', [userId]);
+      const [projects] = await connection.execute('SELECT * FROM projects WHERE user_id = ?', [userId]);
+      const [goals] = await connection.execute('SELECT * FROM goals WHERE user_id = ?', [userId]);
+      const [routines] = await connection.execute('SELECT * FROM routines WHERE user_id = ?', [userId]);
 
       connection.release();
 

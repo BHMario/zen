@@ -15,10 +15,24 @@ class _AddRoutineDialogState extends State<AddRoutineDialog> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
-  late TextEditingController _repeatDaysController;
+  late TextEditingController _customDaysController;
   late TextEditingController _stepsController;
   String _selectedColor = '#2A2A2A';
   TimeOfDay? _scheduleTime;
+  int _repeatDays = 1;
+  bool _isCustomRepeat = false;
+
+  // Opciones predefinidas: (etiqueta, días, icono)
+  static const _repeatPresets = [
+    (label: 'Diario', days: 1, icon: Icons.today_outlined),
+    (label: 'Cada 2 días', days: 2, icon: Icons.event_repeat_outlined),
+    (label: 'Cada 3 días', days: 3, icon: Icons.event_repeat_outlined),
+    (label: 'Semanal', days: 7, icon: Icons.calendar_view_week_outlined),
+    (label: 'Quincenal', days: 14, icon: Icons.calendar_view_month_outlined),
+    (label: 'Mensual', days: 30, icon: Icons.calendar_month_outlined),
+  ];
+
+  bool _isPreset(int days) => _repeatPresets.any((p) => p.days == days);
 
   final List<String> _availableColors = [
     '#111111', // Black
@@ -36,7 +50,7 @@ class _AddRoutineDialogState extends State<AddRoutineDialog> {
     super.initState();
     _nameController = TextEditingController();
     _descriptionController = TextEditingController();
-    _repeatDaysController = TextEditingController(text: '1');
+    _customDaysController = TextEditingController(text: '1');
     _stepsController = TextEditingController();
   }
 
@@ -44,7 +58,7 @@ class _AddRoutineDialogState extends State<AddRoutineDialog> {
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
-    _repeatDaysController.dispose();
+    _customDaysController.dispose();
     _stepsController.dispose();
     super.dispose();
   }
@@ -52,7 +66,11 @@ class _AddRoutineDialogState extends State<AddRoutineDialog> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final repeatDays = int.tryParse(_repeatDaysController.text.trim()) ?? 1;
+    int repeatDays = _repeatDays;
+    if (_isCustomRepeat) {
+      repeatDays = int.tryParse(_customDaysController.text.trim()) ?? 1;
+      if (repeatDays < 1) repeatDays = 1;
+    }
     final steps = _stepsController.text
       .split('\n')
       .map((s) => s.trim())
@@ -160,22 +178,84 @@ class _AddRoutineDialogState extends State<AddRoutineDialog> {
                 ),
                 const SizedBox(height: 16),
 
-                // Repetir cada X días
-                TextFormField(
-                  controller: _repeatDaysController,
-                  decoration: const InputDecoration(
-                    labelText: 'Repetir cada',
-                    hintText: 'Número de días',
-                    prefixIcon: Icon(Icons.repeat_one_outlined),
-                    suffixText: 'días',
-                  ),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  validator: (v) {
-                    final n = int.tryParse(v ?? '');
-                    if (n == null || n < 1) return 'Introduce un número mayor a 0';
-                    return null;
-                  },
+                // Repetición
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.repeat_outlined, size: 18, color: ZenTheme.textLight),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Repetición',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ..._repeatPresets.map((preset) {
+                          final isSelected = !_isCustomRepeat && _repeatDays == preset.days;
+                          return ChoiceChip(
+                            avatar: Icon(
+                              preset.icon,
+                              size: 16,
+                              color: isSelected ? Colors.white : ZenTheme.textLight,
+                            ),
+                            label: Text(preset.label),
+                            selected: isSelected,
+                            selectedColor: ZenTheme.secondaryColor,
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : ZenTheme.textDark,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                            onSelected: (_) => setState(() {
+                              _repeatDays = preset.days;
+                              _isCustomRepeat = false;
+                            }),
+                          );
+                        }),
+                        ChoiceChip(
+                          avatar: Icon(
+                            Icons.tune_outlined,
+                            size: 16,
+                            color: _isCustomRepeat ? Colors.white : ZenTheme.textLight,
+                          ),
+                          label: const Text('Personalizado'),
+                          selected: _isCustomRepeat,
+                          selectedColor: ZenTheme.secondaryColor,
+                          labelStyle: TextStyle(
+                            color: _isCustomRepeat ? Colors.white : ZenTheme.textDark,
+                            fontWeight: _isCustomRepeat ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                          onSelected: (_) => setState(() => _isCustomRepeat = true),
+                        ),
+                      ],
+                    ),
+                    if (_isCustomRepeat) ...[  
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _customDaysController,
+                        decoration: const InputDecoration(
+                          labelText: 'Número de días',
+                          prefixIcon: Icon(Icons.repeat_one_outlined),
+                          suffixText: 'días',
+                          isDense: true,
+                        ),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        validator: (v) {
+                          if (!_isCustomRepeat) return null;
+                          final n = int.tryParse(v ?? '');
+                          if (n == null || n < 1) return 'Mínimo 1 día';
+                          return null;
+                        },
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 16),
 

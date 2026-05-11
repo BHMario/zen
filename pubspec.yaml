@@ -56,6 +56,12 @@ dependencies:
   # Local Storage
   shared_preferences: ^2.2.0
 
+  # Image Picker (gallery & camera)
+  image_picker: ^1.1.2
+
+  # Path Provider (app documents directory)
+  path_provider: ^2.1.2
+
   # File picker for optional attachments
   file_picker: ^8.1.2
 

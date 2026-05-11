@@ -1,4 +1,8 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:zen/providers/providers.dart';
 import 'package:zen/theme/zen_theme.dart';
@@ -14,6 +18,176 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late Future<Map<String, dynamic>?> _userDetailsFuture;
+  bool _isUploadingImage = false;
+  Color _avatarBgColor = const Color(0xFF6366F1); // primario por defecto
+
+  static const List<Color> _avatarPalette = [
+    Color(0xFF6366F1), // Índigo (por defecto)
+    Color(0xFF0EA5E9), // Azul cielo
+    Color(0xFF10B981), // Esmeralda
+    Color(0xFFF59E0B), // Ámbar
+    Color(0xFFEF4444), // Rojo
+    Color(0xFFEC4899), // Rosa
+    Color(0xFF8B5CF6), // Violeta
+    Color(0xFF14B8A6), // Teal
+    Color(0xFFFF7043), // Naranja
+    Color(0xFF2A2A2A), // Carbón
+  ];
+
+  Color _contrastColor(Color bg) {
+    return bg.computeLuminance() > 0.45
+        ? const Color(0xFF1A1A2E)
+        : Colors.white;
+  }
+
+  Future<void> _loadAvatarColor() async {
+    final hex = await TokenService.getAvatarColor();
+    if (hex != null && mounted) {
+      setState(() {
+        _avatarBgColor = Color(int.parse('0xFF${hex.replaceFirst('#', '')}'));
+      });
+    }
+  }
+
+  void _showAvatarColorPicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setModalState) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: ZenTheme.borderColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Color de fondo del avatar',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: _avatarPalette.map((color) {
+                    final isSelected = _avatarBgColor.toARGB32() == color.toARGB32();
+                    return GestureDetector(
+                      onTap: () async {
+                        final hex = '#${color.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
+                        await TokenService.saveAvatarColor(hex);
+                        if (mounted) setState(() => _avatarBgColor = color);
+                        setModalState(() {});
+                        if (context.mounted) Navigator.pop(context);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: isSelected
+                              ? Border.all(color: Colors.black54, width: 3)
+                              : null,
+                          boxShadow: isSelected
+                              ? [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 8, spreadRadius: 1)]
+                              : null,
+                        ),
+                        child: isSelected
+                            ? Icon(Icons.check, color: _contrastColor(color), size: 22)
+                            : null,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: source, imageQuality: 85, maxWidth: 512);
+    if (picked == null) return;
+
+    setState(() => _isUploadingImage = true);
+    try {
+      // Copiar imagen al directorio privado de la app para que persista
+      final appDir = await getApplicationDocumentsDirectory();
+      final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final savedImage = await File(picked.path).copy('${appDir.path}/$fileName');
+
+      if (mounted) {
+        await context.read<AuthProvider>().updateProfileImage(savedImage.path);
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingImage = false);
+    }
+  }
+
+  void _showImageOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: ZenTheme.borderColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Seleccionar de galería'),
+              onTap: () { Navigator.pop(context); _pickImage(ImageSource.gallery); },
+            ),
+            // La cámara solo está disponible en Android/iOS
+            if (!kIsWeb && (Platform.isAndroid || Platform.isIOS))
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined),
+                title: const Text('Tomar foto'),
+                onTap: () { Navigator.pop(context); _pickImage(ImageSource.camera); },
+              ),
+            if (context.read<AuthProvider>().currentUser?.profileImageUrl != null)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Eliminar foto', style: TextStyle(color: Colors.red)),
+                onTap: () { Navigator.pop(context); context.read<AuthProvider>().removeProfileImage(); },
+              ),
+            ListTile(
+              leading: Icon(Icons.palette_outlined, color: _avatarBgColor),
+              title: const Text('Cambiar color de fondo'),
+              onTap: () { Navigator.pop(context); _showAvatarColorPicker(context); },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -22,6 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _userDetailsFuture = authProvider.getUserDetails(
       authProvider.currentUser?.email ?? '',
     );
+    _loadAvatarColor();
   }
 
   @override
@@ -53,39 +228,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            ZenTheme.primaryColor,
-                            ZenTheme.primaryColor.withValues(alpha: 0.8),
+                            _avatarBgColor,
+                            _avatarBgColor.withValues(alpha: 0.8),
                           ],
                         ),
                       ),
                       child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundColor: Colors.white,
-                            child: Text(
-                              user.name.isNotEmpty
-                                  ? user.name[0].toUpperCase()
-                                  : 'U',
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w700,
-                                color: ZenTheme.primaryColor,
-                              ),
+                          GestureDetector(
+                            onTap: () => _showImageOptions(context),
+                            child: Stack(
+                              alignment: Alignment.bottomRight,
+                              children: [
+                                CircleAvatar(
+                                  radius: 50,
+                                  backgroundColor: user.profileImageUrl != null
+                                      ? Colors.white
+                                      : _avatarBgColor.withValues(alpha: 0.25),
+                                  child: _isUploadingImage
+                                      ? const SizedBox(
+                                          width: 32, height: 32,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : user.profileImageUrl != null && File(user.profileImageUrl!).existsSync()
+                                          ? ClipOval(
+                                              child: Image.file(
+                                                File(user.profileImageUrl!),
+                                                width: 100, height: 100,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            )
+                                          : Text(
+                                              user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+                                              style: TextStyle(
+                                                fontSize: 32,
+                                                fontWeight: FontWeight.w700,
+                                                color: _contrastColor(_avatarBgColor),
+                                              ),
+                                            ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt,
+                                    size: 16,
+                                    color: ZenTheme.primaryColor,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 16),
                           Text(
                             user.name,
                             style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(color: Colors.white),
+                                ?.copyWith(color: _contrastColor(_avatarBgColor)),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             user.email,
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.9),
+                                  color: _contrastColor(_avatarBgColor).withValues(alpha: 0.85),
                                 ),
                           ),
                         ],

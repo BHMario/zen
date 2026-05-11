@@ -49,6 +49,8 @@ pool.getConnection().then(async conn => {
     'ALTER TABLE tasks ADD COLUMN completed_at DATETIME DEFAULT NULL',
     'ALTER TABLE tasks ADD COLUMN completion_attachment_url TEXT',
     "ALTER TABLE tasks ADD COLUMN completion_attachment_type VARCHAR(20) DEFAULT NULL",
+    // task_type
+    "ALTER TABLE tasks ADD COLUMN task_type VARCHAR(50) DEFAULT 'other'",
     // projects attachments
     'ALTER TABLE projects ADD COLUMN attachment_url TEXT',
     "ALTER TABLE projects ADD COLUMN attachment_type VARCHAR(20) DEFAULT NULL",
@@ -59,6 +61,12 @@ pool.getConnection().then(async conn => {
     'ALTER TABLE goals ADD COLUMN completed_at DATETIME DEFAULT NULL',
     'ALTER TABLE goals ADD COLUMN completion_attachment_url TEXT',
     "ALTER TABLE goals ADD COLUMN completion_attachment_type VARCHAR(20) DEFAULT NULL",
+    // user privacy/settings columns
+    'ALTER TABLE users ADD COLUMN share_analytics BOOLEAN DEFAULT TRUE',
+    'ALTER TABLE users ADD COLUMN show_active_status BOOLEAN DEFAULT TRUE',
+    'ALTER TABLE users ADD COLUMN app_lock_enabled BOOLEAN DEFAULT FALSE',
+    'ALTER TABLE users ADD COLUMN marketing_emails BOOLEAN DEFAULT TRUE',
+    'ALTER TABLE users ADD COLUMN profile_private BOOLEAN DEFAULT FALSE',
   ];
 
   for (const sql of migrations) {
