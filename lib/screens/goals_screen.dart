@@ -427,6 +427,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
     final completed = goal.copyWith(
       isCompleted: true,
+      currentValue: goal.targetValue,
       completedAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
