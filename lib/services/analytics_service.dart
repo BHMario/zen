@@ -132,7 +132,7 @@ class AnalyticsService {
 
       final dayName = weekDays[date.weekday - 1];
       total[dayName] = (total[dayName] ?? 0) + 1;
-      final isCompleted = c['completed'] == true || c['completed'] == 1;
+      final isCompleted = c['is_completed'] == true || c['is_completed'] == 1;
       if (isCompleted) {
         completed[dayName] = (completed[dayName] ?? 0) + 1;
       }
