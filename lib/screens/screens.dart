@@ -9,3 +9,4 @@ export 'routines_screen.dart';
 export 'goals_screen.dart';
 export 'project_details_screen.dart';
 export 'privacy_screen.dart';
+export 'productivity_screen.dart';
