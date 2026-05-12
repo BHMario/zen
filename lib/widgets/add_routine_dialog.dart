@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:zen/providers/providers.dart';
 import 'package:zen/theme/zen_theme.dart';
+import 'package:zen/utils/color_utils.dart';
 
 class AddRoutineDialog extends StatefulWidget {
   const AddRoutineDialog({super.key});
@@ -17,7 +18,7 @@ class _AddRoutineDialogState extends State<AddRoutineDialog> {
   late TextEditingController _descriptionController;
   late TextEditingController _customDaysController;
   late TextEditingController _stepsController;
-  String _selectedColor = '#2A2A2A';
+  String _selectedColor = DefaultColors.routineDefaultColor;
   TimeOfDay? _scheduleTime;
   int _repeatDays = 1;
   bool _isCustomRepeat = false;
@@ -32,16 +33,8 @@ class _AddRoutineDialogState extends State<AddRoutineDialog> {
     (label: 'Mensual', days: 30, icon: Icons.calendar_month_outlined),
   ];
 
-  final List<String> _availableColors = [
-    '#111111', // Black
-    '#2A2A2A', // Charcoal
-    '#4A4A4A', // Dark Gray
-    '#8E8E8E', // Medium Gray
-    '#C9C9C9', // Light Gray
-    '#2E7D32', // Green
-    '#F2C94C', // Yellow
-    '#D32F2F', // Red
-  ];
+  // Paleta de colores disponibles desde DefaultColors
+  List<String> get _availableColors => DefaultColors.availableColors;
 
   @override
   void initState() {

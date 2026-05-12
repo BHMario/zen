@@ -1,3 +1,5 @@
+import 'package:zen/utils/color_utils.dart';
+
 enum TaskStatus { pending, inProgress, completed, cancelled }
 enum TaskPriority { low, medium, high, urgent }
 enum TaskType { work, personal, sport, other }
@@ -35,7 +37,7 @@ class Task {
     this.priority = TaskPriority.medium,
     this.projectId,
     this.labels = const [],
-    this.color = '#2a2a2a',
+    this.color = DefaultColors.taskDefaultColor,
     required this.createdBy,
     this.assignedTo = const [],
     required this.createdAt,
