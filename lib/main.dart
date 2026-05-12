@@ -27,8 +27,6 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => GoalProvider()),
         ChangeNotifierProvider(create: (_) => ReminderProvider()),
         ChangeNotifierProvider(create: (_) => AnalyticsProvider()),
-        ChangeNotifierProvider(create: (_) => RoutineProvider()),
-        ChangeNotifierProvider(create: (_) => GoalProvider()),
       ],
       child: MaterialApp(
         title: 'Zen - Personal Productivity',

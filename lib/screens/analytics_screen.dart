@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:zen/providers/providers.dart';
-import 'package:zen/theme/zen_theme.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -89,13 +88,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   Widget _buildKPICards(AnalyticsProvider provider) {
     // Obtener datos de otros providers
-    final taskProvider = context.read<TaskProvider>();
     final goalProvider = context.read<GoalProvider>();
     final projectProvider = context.read<ProjectProvider>();
     final routineProvider = context.read<RoutineProvider>();
     
     final totalGoals = goalProvider.goals.length;
-    final completedGoals = goalProvider.goals.where((g) => g.completed).length;
+    final completedGoals = goalProvider.goals.where((g) => g.isCompleted).length;
     final totalProjects = projectProvider.projects.length;
     final activeRoutines = routineProvider.routines.where((r) => r.isActive).length;
     
