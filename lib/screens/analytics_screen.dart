@@ -36,15 +36,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       body: Consumer<AnalyticsProvider>(
         builder: (context, analyticsProvider, _) {
           if (analyticsProvider.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (analyticsProvider.error != null) {
-            return Center(
-              child: Text('Error: ${analyticsProvider.error}'),
-            );
+            return Center(child: Text('Error: ${analyticsProvider.error}'));
           }
 
           return SingleChildScrollView(
@@ -91,12 +87,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     final goalProvider = context.read<GoalProvider>();
     final projectProvider = context.read<ProjectProvider>();
     final routineProvider = context.read<RoutineProvider>();
-    
+
     final totalGoals = goalProvider.goals.length;
     final completedGoals = goalProvider.goals.where((g) => g.isCompleted).length;
     final totalProjects = projectProvider.projects.length;
-    final activeRoutines = routineProvider.routines.where((r) => r.isActive).length;
-    
+    final activeRoutines = routineProvider.routines
+        .where((r) => r.isActive)
+        .length;
+
     return Column(
       children: [
         // Primera fila: Tareas y Racha
@@ -130,7 +128,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             Expanded(
               child: _KPICard(
                 title: '$completedGoals/$totalGoals',
-                value: totalGoals > 0 ? '${((completedGoals / totalGoals) * 100).toInt()}%' : '0%',
+                value: totalGoals > 0
+                    ? '${((completedGoals / totalGoals) * 100).toInt()}%'
+                    : '0%',
                 subtitle: 'Objetivos',
                 icon: Icons.flag,
                 color: const Color(0xFFEC4899),
@@ -180,7 +180,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Widget _buildTaskCompletionChart(AnalyticsProvider provider) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
-    
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -216,17 +216,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       sideTitles: SideTitles(
                         showTitles: true,
                         getTitlesWidget: (value, meta) {
-                          const days = [
-                            'L',
-                            'M',
-                            'X',
-                            'J',
-                            'V',
-                            'S',
-                            'D'
-                          ];
+                          const days = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
                           final i = value.toInt();
-                          if (i < 0 || i >= days.length) return const SizedBox.shrink();
+                          if (i < 0 || i >= days.length)
+                            return const SizedBox.shrink();
                           return Text(
                             days[i],
                             style: TextStyle(fontSize: isSmallScreen ? 10 : 12),
@@ -265,7 +258,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       'Jueves',
       'Viernes',
       'Sábado',
-      'Domingo'
+      'Domingo',
     ];
     final colors = [
       Colors.blue,
@@ -279,8 +272,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
     return List.generate(7, (index) {
       final day = days[index];
-      final value =
-          (provider.weeklyTaskCompletion[day] ?? 0).toDouble();
+      final value = (provider.weeklyTaskCompletion[day] ?? 0).toDouble();
       return BarChartGroupData(
         x: index,
         barRods: [
@@ -302,8 +294,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
-    final total =
-        provider.timeByProject.values.fold(0.0, (a, b) => a + b);
+    final total = provider.timeByProject.values.fold(0.0, (a, b) => a + b);
     if (total == 0) return const SizedBox.shrink();
     final colors = [
       Colors.blue,
@@ -334,24 +325,23 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               height: isSmallScreen ? 180 : 200,
               child: PieChart(
                 PieChartData(
-                  sections: List.generate(
-                    provider.timeByProject.length,
-                    (index) {
-                      final entry =
-                          provider.timeByProject.entries.toList()[index];
-                      return PieChartSectionData(
-                        value: entry.value,
-                        title: '${entry.value.toStringAsFixed(1)}h',
-                        color: colors[index % colors.length],
-                        radius: isSmallScreen ? 70 : 80,
-                        titleStyle: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: isSmallScreen ? 10 : 12,
-                        ),
-                      );
-                    },
-                  ),
+                  sections: List.generate(provider.timeByProject.length, (
+                    index,
+                  ) {
+                    final entry = provider.timeByProject.entries
+                        .toList()[index];
+                    return PieChartSectionData(
+                      value: entry.value,
+                      title: '${entry.value.toStringAsFixed(1)}h',
+                      color: colors[index % colors.length],
+                      radius: isSmallScreen ? 70 : 80,
+                      titleStyle: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: isSmallScreen ? 10 : 12,
+                      ),
+                    );
+                  }),
                 ),
               ),
             ),
@@ -359,33 +349,28 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             Wrap(
               spacing: 12,
               runSpacing: 8,
-              children: List.generate(
-                provider.timeByProject.length,
-                (index) {
-                  final entry =
-                      provider.timeByProject.entries.toList()[index];
-                  final percentage =
-                      (entry.value / total) * 100;
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: isSmallScreen ? 10 : 12,
-                        height: isSmallScreen ? 10 : 12,
-                        decoration: BoxDecoration(
-                          color: colors[index % colors.length],
-                          shape: BoxShape.circle,
-                        ),
+              children: List.generate(provider.timeByProject.length, (index) {
+                final entry = provider.timeByProject.entries.toList()[index];
+                final percentage = (entry.value / total) * 100;
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: isSmallScreen ? 10 : 12,
+                      height: isSmallScreen ? 10 : 12,
+                      decoration: BoxDecoration(
+                        color: colors[index % colors.length],
+                        shape: BoxShape.circle,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${entry.key}: ${percentage.toStringAsFixed(1)}%',
-                        style: TextStyle(fontSize: isSmallScreen ? 11 : 12),
-                      ),
-                    ],
-                  );
-                },
-              ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${entry.key}: ${percentage.toStringAsFixed(1)}%',
+                      style: TextStyle(fontSize: isSmallScreen ? 11 : 12),
+                    ),
+                  ],
+                );
+              }),
             ),
           ],
         ),
@@ -406,10 +391,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           children: [
             const Text(
               'Balance Trabajo/Vida Personal',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -419,7 +401,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   sections: [
                     PieChartSectionData(
                       value: provider.workLifeBalance['Trabajo'] ?? 50,
-                      title: '${(provider.workLifeBalance['Trabajo'] ?? 50).toStringAsFixed(1)}%',
+                      title:
+                          '${(provider.workLifeBalance['Trabajo'] ?? 50).toStringAsFixed(1)}%',
                       color: colors[0],
                       radius: 80,
                       titleStyle: const TextStyle(
@@ -430,7 +413,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     ),
                     PieChartSectionData(
                       value: provider.workLifeBalance['Personal'] ?? 50,
-                      title: '${(provider.workLifeBalance['Personal'] ?? 50).toStringAsFixed(1)}%',
+                      title:
+                          '${(provider.workLifeBalance['Personal'] ?? 50).toStringAsFixed(1)}%',
                       color: colors[1],
                       radius: 80,
                       titleStyle: const TextStyle(
@@ -480,10 +464,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           children: [
             const Text(
               'Cumplimiento de Hábitos (Semanal)',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -507,7 +488,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                         getTitlesWidget: (value, meta) {
                           const days = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
                           final i = value.toInt();
-                          if (i < 0 || i >= days.length) return const SizedBox.shrink();
+                          if (i < 0 || i >= days.length)
+                            return const SizedBox.shrink();
                           return Text(days[i]);
                         },
                       ),
@@ -531,7 +513,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  List<BarChartGroupData> _buildHabitCompletionBars(AnalyticsProvider provider) {
+  List<BarChartGroupData> _buildHabitCompletionBars(
+    AnalyticsProvider provider,
+  ) {
     final days = [
       'Lunes',
       'Martes',
@@ -539,7 +523,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       'Jueves',
       'Viernes',
       'Sábado',
-      'Domingo'
+      'Domingo',
     ];
     final colors = [
       Colors.blue,
@@ -576,7 +560,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: isPositive ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+      color: isPositive
+          ? Colors.green.withValues(alpha: 0.1)
+          : Colors.red.withValues(alpha: 0.1),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -592,10 +578,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               children: [
                 const Text(
                   'Tendencia de Productividad',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 4),
                 RichText(
@@ -611,10 +594,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       ),
                       const TextSpan(
                         text: ' vs. semana anterior',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -647,7 +627,7 @@ class _KPICard extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
-    
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -661,11 +641,7 @@ class _KPICard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(
-                  icon,
-                  color: color,
-                  size: isSmallScreen ? 18 : 20,
-                ),
+                Icon(icon, color: color, size: isSmallScreen ? 18 : 20),
                 Text(
                   value,
                   style: TextStyle(
@@ -725,10 +701,7 @@ class _LegendItem extends StatelessWidget {
         Container(
           width: 12,
           height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 8),
         Text(

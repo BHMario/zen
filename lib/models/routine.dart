@@ -1,3 +1,5 @@
+import 'package:zen/utils/color_utils.dart';
+
 enum Frequency { daily, weekly, biWeekly, monthly }
 enum DayOfWeek { monday, tuesday, wednesday, thursday, friday, saturday, sunday }
 
@@ -30,7 +32,7 @@ class Routine {
     this.description,
     this.frequency = Frequency.daily,
     this.daysOfWeek = const [],
-    this.color = '#2a2a2a',
+    this.color = DefaultColors.routineDefaultColor,
     required this.createdBy,
     this.sharedWith = const [],
     required this.createdAt,

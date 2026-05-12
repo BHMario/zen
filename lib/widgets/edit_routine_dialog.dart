@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:zen/models/models.dart';
 import 'package:zen/providers/providers.dart';
 import 'package:zen/theme/zen_theme.dart';
+import 'package:zen/utils/color_utils.dart';
 
 class EditRoutineDialog extends StatefulWidget {
   final Routine routine;
@@ -35,16 +36,8 @@ class _EditRoutineDialogState extends State<EditRoutineDialog> {
     (label: 'Mensual', days: 30, icon: Icons.calendar_month_outlined),
   ];
 
-  final List<String> _availableColors = [
-    '#111111',
-    '#2A2A2A',
-    '#4A4A4A',
-    '#8E8E8E',
-    '#C9C9C9',
-    '#2E7D32',
-    '#F2C94C',
-    '#D32F2F',
-  ];
+  // Paleta de colores disponibles desde DefaultColors
+  List<String> get _availableColors => DefaultColors.availableColors;
 
   @override
   void initState() {

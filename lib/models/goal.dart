@@ -1,3 +1,5 @@
+import 'package:zen/utils/color_utils.dart';
+
 enum GoalCategory { health, career, personal, finance, education, relationships, other }
 enum GoalTimeframe { shortTerm, mediumTerm, longTerm }
 
@@ -38,7 +40,7 @@ class Goal {
     required this.createdAt,
     required this.updatedAt,
     this.isCompleted = false,
-    this.color = '#2a2a2a',
+    this.color = DefaultColors.goalDefaultColor,
     this.milestones = const [],
     this.labels = const [],
     this.completedAt,
