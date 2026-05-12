@@ -74,14 +74,14 @@ class ReminderProvider extends ChangeNotifier {
     String? message,
   }) async {
     try {
-      if (_currentUserId == null) {
+      if (_currentUserId.isEmpty) {
         throw Exception('Usuario no autenticado');
       }
 
       // Guardar en MySQL a través de API
       // Convertir a UTC para garantizar consistencia entre zonas horarias
       final result = await ApiService.createReminder(
-        userId: _currentUserId!,
+        userId: _currentUserId,
         itemId: itemId,
         type: type.toString().split('.').last,
         dateTime: dateTime.toUtc().toIso8601String(),
@@ -222,6 +222,8 @@ class ReminderProvider extends ChangeNotifier {
       case 'weekly':
         return ReminderFrequency.weekly;
       case 'monthly':
+        return ReminderFrequency.custom;
+      case 'custom':
         return ReminderFrequency.custom;
       default:
         return ReminderFrequency.once;

@@ -19,6 +19,14 @@ class _ProjectsScreenState extends State<ProjectsScreen> with SingleTickerProvid
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    Future.microtask(_loadProjects);
+  }
+
+  Future<void> _loadProjects() async {
+    final userId = context.read<AuthProvider>().currentUser?.id;
+    if (userId != null) {
+      await context.read<ProjectProvider>().loadUserProjects(userId);
+    }
   }
 
   @override

@@ -164,6 +164,13 @@ class _EditProjectDialogState extends State<EditProjectDialog> {
   Future<void> _saveProject() async {
     if (_nameController.text.isEmpty) return;
 
+    if (_endDate != null && _endDate!.isBefore(_startDate)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La fecha de fin no puede ser anterior a la de inicio')),
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
     try {
       final updatedProject = widget.project.copyWith(

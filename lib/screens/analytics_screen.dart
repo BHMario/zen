@@ -165,7 +165,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                             'S',
                             'D'
                           ];
-                          return Text(days[value.toInt()]);
+                          final i = value.toInt();
+                          if (i < 0 || i >= days.length) return const SizedBox.shrink();
+                          return Text(days[i]);
                         },
                       ),
                     ),
@@ -233,6 +235,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
     final total =
         provider.timeByProject.values.fold(0.0, (a, b) => a + b);
+    if (total == 0) return const SizedBox.shrink();
     final colors = [
       Colors.blue,
       Colors.green,
@@ -433,16 +436,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       sideTitles: SideTitles(
                         showTitles: true,
                         getTitlesWidget: (value, meta) {
-                          const days = [
-                            'L',
-                            'M',
-                            'X',
-                            'J',
-                            'V',
-                            'S',
-                            'D'
-                          ];
-                          return Text(days[value.toInt()]);
+                          const days = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+                          final i = value.toInt();
+                          if (i < 0 || i >= days.length) return const SizedBox.shrink();
+                          return Text(days[i]);
                         },
                       ),
                     ),

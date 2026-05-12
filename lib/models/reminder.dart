@@ -71,7 +71,7 @@ class Reminder {
     return Reminder(
       id: map['id'] as String,
       itemId: map['itemId'] as String,
-      type: ReminderType.values.byName(map['type'] as String),
+      type: ReminderType.values.byName(map['type'] as String? ?? 'task'),
       dateTime: DateTime.parse(map['dateTime'] as String),
       frequency: ReminderFrequency.values.byName(map['frequency'] as String? ?? 'once'),
       message: map['message'] as String?,

@@ -65,8 +65,11 @@ class Goal {
     List<String>? milestones,
     List<String>? labels,
     DateTime? completedAt,
+    bool clearCompletedAt = false,
     String? completionAttachmentUrl,
+    bool clearCompletionAttachmentUrl = false,
     String? completionAttachmentType,
+    bool clearCompletionAttachmentType = false,
   }) {
     return Goal(
       id: id ?? this.id,
@@ -86,11 +89,9 @@ class Goal {
       color: color ?? this.color,
       milestones: milestones ?? this.milestones,
       labels: labels ?? this.labels,
-      completedAt: completedAt ?? this.completedAt,
-      completionAttachmentUrl:
-          completionAttachmentUrl ?? this.completionAttachmentUrl,
-      completionAttachmentType:
-          completionAttachmentType ?? this.completionAttachmentType,
+      completedAt: clearCompletedAt ? null : (completedAt ?? this.completedAt),
+      completionAttachmentUrl: clearCompletionAttachmentUrl ? null : (completionAttachmentUrl ?? this.completionAttachmentUrl),
+      completionAttachmentType: clearCompletionAttachmentType ? null : (completionAttachmentType ?? this.completionAttachmentType),
     );
   }
 

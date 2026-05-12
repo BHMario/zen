@@ -242,6 +242,7 @@ class GoalProvider extends ChangeNotifier {
         isCompleted: willComplete,
         currentValue: willComplete ? goal.targetValue : goal.currentValue,
         completedAt: willComplete ? DateTime.now() : null,
+        clearCompletedAt: !willComplete,
         updatedAt: DateTime.now(),
       ),
     );
@@ -259,6 +260,7 @@ class GoalProvider extends ChangeNotifier {
       completedAt: willComplete
           ? (goal.completedAt ?? DateTime.now())
           : null,
+      clearCompletedAt: !willComplete,
       updatedAt: DateTime.now(),
     );
     await updateGoal(updated);
