@@ -146,36 +146,76 @@ class AnalyticsService {
     return result;
   }
 
-  /// Calcular balance trabajo/vida personal basado en etiquetas
+  /// Calcular distribución de actividad por categoría (tareas + objetivos)
   static Future<Map<String, double>> getWorkLifeBalance(String userId) async {
-    final tasks = await ApiService.getTasks(userId: userId);
-    
-    double workTasks = 0;
-    double personalTasks = 0;
+    final results = await Future.wait([
+      ApiService.getTasks(userId: userId),
+      ApiService.getGoals(userId: userId),
+    ]);
 
+    final tasks = results[0] as List<Map<String, dynamic>>;
+    final goals = results[1] as List<Map<String, dynamic>>;
+
+    final Map<String, double> distribution = {};
+
+    // Contabilizar tareas por tipo
     for (final task in tasks) {
-      final labels = task['labels'] is List 
-          ? List<String>.from(task['labels'] as List)
-          : [];
-      final isWork = labels.any((label) => 
-          label.toLowerCase().contains('trabajo') || 
-          label.toLowerCase().contains('proyecto'));
-      
-      if (isWork) {
-        workTasks += 1;
-      } else {
-        personalTasks += 1;
+      final taskType = task['task_type'] as String? ?? 'other';
+      final String label;
+      switch (taskType) {
+        case 'work':
+          label = 'Trabajo';
+          break;
+        case 'personal':
+          label = 'Personal';
+          break;
+        case 'sport':
+          label = 'Deporte';
+          break;
+        default:
+          label = 'Otros';
       }
+      distribution[label] = (distribution[label] ?? 0) + 1;
     }
 
-    final total = workTasks + personalTasks;
+    // Contabilizar objetivos por categoría
+    for (final goal in goals) {
+      final category = goal['category'] as String? ?? 'other';
+      final String label;
+      switch (category) {
+        case 'health':
+          label = 'Salud';
+          break;
+        case 'career':
+          label = 'Trabajo';
+          break;
+        case 'personal':
+          label = 'Personal';
+          break;
+        case 'finance':
+          label = 'Finanzas';
+          break;
+        case 'education':
+          label = 'Educación';
+          break;
+        case 'relationships':
+          label = 'Relaciones';
+          break;
+        default:
+          label = 'Otros';
+      }
+      distribution[label] = (distribution[label] ?? 0) + 1;
+    }
+
+    final total = distribution.values.fold(0.0, (a, b) => a + b);
     if (total == 0) {
-      return {'Trabajo': 50, 'Personal': 50};
+      return {'Sin datos': 100};
     }
 
+    // Convertir a porcentajes (sólo entradas con valor)
     return {
-      'Trabajo': (workTasks / total) * 100,
-      'Personal': (personalTasks / total) * 100,
+      for (final e in distribution.entries)
+        if (e.value > 0) e.key: (e.value / total) * 100,
     };
   }
 
