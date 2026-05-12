@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:zen/models/models.dart';
 import 'package:zen/providers/providers.dart';
 import 'package:zen/utils/utils.dart';
+import 'package:zen/utils/color_utils.dart';
 
 class EditProjectDialog extends StatefulWidget {
   final Project project;
@@ -21,22 +22,14 @@ class _EditProjectDialogState extends State<EditProjectDialog> {
   DateTime? _endDate;
   bool _isSaving = false;
 
-  final List<String> _colors = [
-    '#3B82F6', // Blue
-    '#EF4444', // Red
-    '#10B981', // Green
-    '#F59E0B', // Amber
-    '#6366F1', // Indigo
-    '#8B5CF6', // Violet
-    '#EC4899', // Pink
-  ];
+  final List<String> _colors = DefaultColors.availableColors;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.project.name);
     _descriptionController = TextEditingController(text: widget.project.description);
-    _selectedColor = widget.project.color;
+    _selectedColor = widget.project.color.isNotEmpty ? widget.project.color : DefaultColors.projectDefaultColor;
     _startDate = widget.project.startDate;
     _endDate = widget.project.endDate;
   }

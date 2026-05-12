@@ -1,4 +1,5 @@
 import 'task.dart';
+import 'package:zen/utils/color_utils.dart';
 
 enum ProjectStatus { planning, active, onHold, completed }
 
@@ -27,7 +28,7 @@ class Project {
     required this.id,
     required this.name,
     this.description,
-    this.color = '#2a2a2a',
+    this.color = DefaultColors.projectDefaultColor,
     this.status = ProjectStatus.planning,
     required this.startDate,
     this.endDate,

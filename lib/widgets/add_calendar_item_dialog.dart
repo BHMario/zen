@@ -6,6 +6,7 @@ import 'package:zen/models/models.dart';
 import 'package:zen/providers/providers.dart';
 import 'package:zen/services/services.dart';
 import 'package:zen/theme/zen_theme.dart';
+import 'package:zen/utils/color_utils.dart';
 
 class AddCalendarItemDialog extends StatefulWidget {
   final String? initialType;
@@ -35,7 +36,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   TaskType _taskType = TaskType.other;
   GoalCategory _goalCategory = GoalCategory.other;
   GoalTimeframe _goalTimeframe = GoalTimeframe.mediumTerm;
-  String _selectedColor = '#2A2A2A';
+  late String _selectedColor;
   final List<String> _selectedLabels = [];
   String? _attachmentUrl;
   String? _attachmentType;
@@ -44,16 +45,8 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   bool _setReminder = false;
   DateTime? _reminderDateTime;
 
-  final List<String> _availableColors = [
-    '#111111', // Black
-    '#2A2A2A', // Charcoal
-    '#4A4A4A', // Dark Gray
-    '#8E8E8E', // Medium Gray
-    '#C9C9C9', // Light Gray
-    '#2E7D32', // Green
-    '#F2C94C', // Yellow
-    '#D32F2F', // Red
-  ];
+  // Paleta de colores disponibles desde DefaultColors
+  List<String> get _availableColors => DefaultColors.availableColors;
 
   @override
   void initState() {
@@ -67,6 +60,9 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     _projectStartDate = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
     _projectEndDate = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
     _reminderDateTime = DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day);
+    
+    // Set default color based on type
+    _selectedColor = _getDefaultColorForType(_selectedType);
   }
 
   Future<void> _pickAttachment() async {
@@ -113,6 +109,21 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  String _getDefaultColorForType(String type) {
+    switch (type) {
+      case 'task':
+        return DefaultColors.taskDefaultColor;
+      case 'project':
+        return DefaultColors.projectDefaultColor;
+      case 'routine':
+        return DefaultColors.routineDefaultColor;
+      case 'goal':
+        return DefaultColors.goalDefaultColor;
+      default:
+        return DefaultColors.defaultColor;
+    }
   }
 
   void _addItem() async {
@@ -909,7 +920,12 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
       selected: isSelected,
       label: Text(label),
       onSelected: (selected) {
-        if (selected) setState(() => _selectedType = type);
+        if (selected) {
+          setState(() {
+            _selectedType = type;
+            _selectedColor = _getDefaultColorForType(type);
+          });
+        }
       },
     );
   }
