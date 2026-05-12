@@ -10,6 +10,10 @@ class ProductivityScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final crossAxisCount = screenWidth > 600 ? 3 : 2;
+    final spacing = screenWidth > 600 ? 20.0 : 12.0;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -22,62 +26,65 @@ class ProductivityScreen extends StatelessWidget {
         backgroundColor: ZenTheme.backgroundColor,
       ),
       backgroundColor: ZenTheme.backgroundColor,
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: GridView.count(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          children: [
-            _ProductivityCard(
-              icon: Icons.checklist,
-              title: 'Tareas',
-              description: 'Gestiona tus tareas diarias',
-              color: const Color(0xFF6366F1),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const TasksScreen()),
-                );
-              },
-            ),
-            _ProductivityCard(
-              icon: Icons.flag,
-              title: 'Objetivos',
-              description: 'Define y alcanza tus metas',
-              color: const Color(0xFFEC4899),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const GoalsScreen()),
-                );
-              },
-            ),
-            _ProductivityCard(
-              icon: Icons.folder,
-              title: 'Proyectos',
-              description: 'Organiza tus proyectos',
-              color: const Color(0xFF8B5CF6),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ProjectsScreen()),
-                );
-              },
-            ),
-            _ProductivityCard(
-              icon: Icons.repeat,
-              title: 'Rutinas',
-              description: 'Mantén tus hábitos',
-              color: const Color(0xFF10B981),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const RoutinesScreen()),
-                );
-              },
-            ),
-          ],
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(spacing),
+          child: GridView.count(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+            childAspectRatio: 0.95,
+            children: [
+              _ProductivityCard(
+                icon: Icons.checklist,
+                title: 'Tareas',
+                description: 'Gestiona tus tareas diarias',
+                color: const Color(0xFF6366F1),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const TasksScreen()),
+                  );
+                },
+              ),
+              _ProductivityCard(
+                icon: Icons.flag,
+                title: 'Objetivos',
+                description: 'Define y alcanza tus metas',
+                color: const Color(0xFFEC4899),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const GoalsScreen()),
+                  );
+                },
+              ),
+              _ProductivityCard(
+                icon: Icons.folder,
+                title: 'Proyectos',
+                description: 'Organiza tus proyectos',
+                color: const Color(0xFF8B5CF6),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ProjectsScreen()),
+                  );
+                },
+              ),
+              _ProductivityCard(
+                icon: Icons.repeat,
+                title: 'Rutinas',
+                description: 'Mantén tus hábitos',
+                color: const Color(0xFF10B981),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const RoutinesScreen()),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -101,6 +108,9 @@ class _ProductivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -111,38 +121,41 @@ class _ProductivityCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 64,
-                height: 64,
+                width: isSmallScreen ? 48 : 56,
+                height: isSmallScreen ? 48 : 56,
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   icon,
-                  size: 32,
+                  size: isSmallScreen ? 24 : 28,
                   color: color,
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: isSmallScreen ? 8 : 12),
               Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 18,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 14 : 16,
                   fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: isSmallScreen ? 4 : 6),
               Text(
                 description,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: isSmallScreen ? 11 : 12,
                   color: Colors.grey[600],
+                  height: 1.2,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
