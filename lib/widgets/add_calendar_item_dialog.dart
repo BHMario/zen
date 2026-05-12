@@ -36,7 +36,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   GoalCategory _goalCategory = GoalCategory.other;
   GoalTimeframe _goalTimeframe = GoalTimeframe.mediumTerm;
   String _selectedColor = '#2A2A2A';
-  List<String> _selectedLabels = [];
+  final List<String> _selectedLabels = [];
   String? _attachmentUrl;
   String? _attachmentType;
   String? _attachmentName;
@@ -72,7 +72,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   Future<void> _pickAttachment() async {
     setState(() => _isUploadingAttachment = true);
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'mov'],
         withData: true,
@@ -295,6 +295,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
       userId: userId,
     );
 
+    if (!mounted) return;
     if (_setReminder && _reminderDateTime != null) {
       final tasks = context.read<TaskProvider>().tasks;
       final createdId = tasks.isNotEmpty ? tasks.last.id : '';
@@ -327,8 +328,10 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
     );
 
     // Recargar proyectos desde la API para asegurar sincronización
+    if (!mounted) return;
     await context.read<ProjectProvider>().loadUserProjects(userId);
 
+    if (!mounted) return;
     if (_setReminder && _reminderDateTime != null) {
       final projects = context.read<ProjectProvider>().projects;
       final matching = projects.where((p) => p.name == _titleController.text.trim()).toList();
@@ -358,6 +361,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
       userId: userId,
     );
 
+    if (!mounted) return;
     if (_setReminder && _reminderDateTime != null) {
       final routines = context.read<RoutineProvider>().routines;
       final createdId = routines.isNotEmpty ? routines.last.id : '';
@@ -391,6 +395,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
       userId: userId,
     );
 
+    if (!mounted) return;
     if (_setReminder && _reminderDateTime != null) {
       final goals = context.read<GoalProvider>().goals;
       final matching = goals.where((g) => g.title == _titleController.text.trim()).toList();
@@ -603,7 +608,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
               // Prioridad (solo para tareas)
               if (_selectedType == 'task') ...[
                 DropdownButtonFormField<TaskPriority>(
-                  value: _priority,
+                  initialValue: _priority,
                   decoration: const InputDecoration(
                     hintText: 'Selecciona prioridad',
                     labelText: 'Prioridad',
@@ -622,7 +627,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                 const SizedBox(height: 16),
                 // Tipo de tarea
                 DropdownButtonFormField<TaskType>(
-                  value: _taskType,
+                  initialValue: _taskType,
                   decoration: const InputDecoration(
                     hintText: 'Selecciona tipo de tarea',
                     labelText: 'Tipo',
@@ -644,7 +649,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                   builder: (context, projectProvider, child) {
                     final projects = projectProvider.projects;
                     return DropdownButtonFormField<String>(
-                      value: _selectedProjectId,
+                      initialValue: _selectedProjectId,
                       decoration: const InputDecoration(
                         hintText: 'Selecciona proyecto (opcional)',
                         labelText: 'Proyecto',
@@ -743,7 +748,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
               // Formulario específico de objetivos
               if (_selectedType == 'goal') ...[
                 DropdownButtonFormField<GoalCategory>(
-                  value: _goalCategory,
+                  initialValue: _goalCategory,
                   decoration: const InputDecoration(
                     hintText: 'Selecciona categoría',
                     labelText: 'Categoría',
@@ -761,7 +766,7 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<GoalTimeframe>(
-                  value: _goalTimeframe,
+                  initialValue: _goalTimeframe,
                   decoration: const InputDecoration(
                     hintText: 'Selecciona plazo',
                     labelText: 'Plazo',

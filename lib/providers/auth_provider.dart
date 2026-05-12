@@ -5,7 +5,7 @@ import 'package:zen/services/services.dart';
 class AuthProvider extends ChangeNotifier {
   User? _currentUser;
   bool _isLoading = false;
-  String? _errorMessage = null;
+  String? _errorMessage;
   bool _isLogin = true; // true = login, false = register
 
   // Getters
@@ -147,6 +147,32 @@ class AuthProvider extends ChangeNotifier {
     };
   }
 
+  /// Actualizar foto de perfil (guardada localmente)
+  Future<void> updateProfileImage(String imagePath) async {
+    await TokenService.saveProfileImagePath(imagePath);
+    _currentUser = _currentUser?.copyWith(profileImageUrl: imagePath);
+    notifyListeners();
+  }
+
+  /// Eliminar foto de perfil
+  Future<void> removeProfileImage() async {
+    await TokenService.removeProfileImagePath();
+    if (_currentUser != null) {
+      _currentUser = User(
+        id: _currentUser!.id,
+        name: _currentUser!.name,
+        email: _currentUser!.email,
+        phone: _currentUser!.phone,
+        profileImageUrl: null,
+        createdAt: _currentUser!.createdAt,
+        updatedAt: _currentUser!.updatedAt,
+        isEmailVerified: _currentUser!.isEmailVerified,
+        lopdAccepted: _currentUser!.lopdAccepted,
+      );
+    }
+    notifyListeners();
+  }
+
   // Cambiar contraseña
   Future<bool> changePassword({
     required String oldPassword,
@@ -286,6 +312,7 @@ class AuthProvider extends ChangeNotifier {
           id: userId,
           name: userData['name'] ?? '',
           email: userData['email'] ?? '',
+          profileImageUrl: userData['profileImagePath'],
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
           isEmailVerified: false,

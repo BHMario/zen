@@ -30,13 +30,31 @@ const initializeDatabase = async () => {
         password VARCHAR(255) NOT NULL,
         phone VARCHAR(20),
         lopd_accepted BOOLEAN DEFAULT FALSE,
+        share_analytics BOOLEAN DEFAULT TRUE,
+        show_active_status BOOLEAN DEFAULT TRUE,
+        app_lock_enabled BOOLEAN DEFAULT FALSE,
+        marketing_emails BOOLEAN DEFAULT TRUE,
+        profile_private BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       );
     `);
+    // Añadir columnas de privacidad a instalaciones existentes
+    const userAlterCols = [
+      'share_analytics BOOLEAN DEFAULT TRUE',
+      'show_active_status BOOLEAN DEFAULT TRUE',
+      'app_lock_enabled BOOLEAN DEFAULT FALSE',
+      'marketing_emails BOOLEAN DEFAULT TRUE',
+      'profile_private BOOLEAN DEFAULT FALSE',
+    ];
+    for (const col of userAlterCols) {
+      try {
+        await connection.query(`ALTER TABLE users ADD COLUMN ${col};`);
+      } catch (e) { /* columna ya existe */ }
+    }
     console.log('✅ Tabla users creada');
 
-    // Tabla de proyectos (antes de tasks para la FK project_id)
+    // Tabla de proyectos (fechas como DATE - antes de tasks para la FK project_id)
     await connection.query(`
       CREATE TABLE IF NOT EXISTS projects (
         id VARCHAR(36) PRIMARY KEY,
@@ -98,14 +116,14 @@ const initializeDatabase = async () => {
     `);
     console.log('✅ Tabla tasks creada');
 
-    // Asegurar columnas opcionales de adjuntos en instalaciones existentes
+    // Asegurar columnas opcionales en instalaciones existentes
     const taskAlterCols = [
       'attachment_url TEXT',
       'attachment_type VARCHAR(20) DEFAULT NULL',
       'completed_at DATETIME DEFAULT NULL',
       'completion_attachment_url TEXT',
       'completion_attachment_type VARCHAR(20) DEFAULT NULL',
-      'task_type VARCHAR(50) DEFAULT \'other\'',
+      "task_type VARCHAR(50) DEFAULT 'other'",
     ];
     for (const col of taskAlterCols) {
       try {

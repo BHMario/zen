@@ -11,9 +11,34 @@ pluginManagement {
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 
     repositories {
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
         google()
-        mavenCentral()
+        maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
         gradlePluginPortal()
+    }
+}
+
+gradle.beforeProject {
+    buildscript.repositories {
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
+        google()
+        maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
+        google()
+        maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
+        maven {
+            url = uri("https://repo.maven.apache.org/maven2/")
+            metadataSources {
+                mavenPom()
+                artifact()
+            }
+        }
     }
 }
 

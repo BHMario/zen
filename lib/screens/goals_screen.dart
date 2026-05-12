@@ -57,7 +57,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<GoalCategory>(
-                  value: category,
+                  initialValue: category,
                   decoration: const InputDecoration(labelText: 'Categoría'),
                   items: GoalCategory.values
                       .map((e) => DropdownMenuItem(
@@ -71,7 +71,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<GoalTimeframe>(
-                  value: timeframe,
+                  initialValue: timeframe,
                   decoration: const InputDecoration(labelText: 'Plazo'),
                   items: GoalTimeframe.values
                       .map((e) => DropdownMenuItem(
@@ -132,6 +132,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
         return;
       }
 
+      if (!mounted) return;
       final userId = context.read<AuthProvider>().currentUser?.id;
       if (userId != null) {
         await context.read<GoalProvider>().addGoal(
@@ -188,7 +189,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<GoalCategory>(
-                  value: category,
+                  initialValue: category,
                   decoration: const InputDecoration(labelText: 'Categoría'),
                   items: GoalCategory.values
                       .map((e) => DropdownMenuItem(
@@ -202,7 +203,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<GoalTimeframe>(
-                  value: timeframe,
+                  initialValue: timeframe,
                   decoration: const InputDecoration(labelText: 'Plazo'),
                   items: GoalTimeframe.values
                       .map((e) => DropdownMenuItem(
@@ -277,6 +278,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
         isCompleted: current >= 100,
         updatedAt: DateTime.now(),
       );
+      if (!mounted) return;
       await context.read<GoalProvider>().updateGoal(updated);
     }
 
@@ -306,6 +308,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
     );
 
     if (confirm == true) {
+      if (!mounted) return;
       try {
         await context.read<GoalProvider>().deleteGoal(goal.id);
         if (mounted) {
@@ -429,6 +432,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
     );
     await provider.updateGoal(completed);
 
+    if (!mounted) return;
     final completionData = await CompletionDialog.showCelebrationAndAttach(
       context,
       itemTypeLabel: 'Objetivo',
