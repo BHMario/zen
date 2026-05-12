@@ -87,39 +87,101 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildKPICards(AnalyticsProvider provider) {
-    return Row(
+    // Obtener datos de otros providers
+    final taskProvider = context.read<TaskProvider>();
+    final goalProvider = context.read<GoalProvider>();
+    final projectProvider = context.read<ProjectProvider>();
+    final routineProvider = context.read<RoutineProvider>();
+    
+    final totalGoals = goalProvider.goals.length;
+    final completedGoals = goalProvider.goals.where((g) => g.completed).length;
+    final totalProjects = projectProvider.projects.length;
+    final activeRoutines = routineProvider.routines.where((r) => r.isActive).length;
+    
+    return Column(
       children: [
-        Expanded(
-          child: _KPICard(
-            title: 'Tareas Completadas',
-            value: provider.totalCompletedTasks.toString(),
-            icon: Icons.check_circle,
-            color: ZenTheme.primaryColor,
-          ),
+        // Primera fila: Tareas y Racha
+        Row(
+          children: [
+            Expanded(
+              child: _KPICard(
+                title: 'Completadas',
+                value: provider.totalCompletedTasks.toString(),
+                subtitle: 'Tareas',
+                icon: Icons.check_circle,
+                color: const Color(0xFF10B981),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _KPICard(
+                title: 'Pendientes',
+                value: provider.totalPendingTasks.toString(),
+                subtitle: 'Tareas',
+                icon: Icons.pending_actions,
+                color: const Color(0xFFF59E0B),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _KPICard(
-            title: 'Pendientes',
-            value: provider.totalPendingTasks.toString(),
-            icon: Icons.pending_actions,
-            color: Colors.orange,
-          ),
+        const SizedBox(height: 12),
+        // Segunda fila: Objetivos y Proyectos
+        Row(
+          children: [
+            Expanded(
+              child: _KPICard(
+                title: '$completedGoals/$totalGoals',
+                value: totalGoals > 0 ? '${((completedGoals / totalGoals) * 100).toInt()}%' : '0%',
+                subtitle: 'Objetivos',
+                icon: Icons.flag,
+                color: const Color(0xFFEC4899),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _KPICard(
+                title: 'Activos',
+                value: totalProjects.toString(),
+                subtitle: 'Proyectos',
+                icon: Icons.folder,
+                color: const Color(0xFF8B5CF6),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _KPICard(
-            title: 'Racha',
-            value: '${provider.productivityStreak} días',
-            icon: Icons.local_fire_department,
-            color: Colors.red,
-          ),
+        const SizedBox(height: 12),
+        // Tercera fila: Rutinas y Racha
+        Row(
+          children: [
+            Expanded(
+              child: _KPICard(
+                title: 'Activas',
+                value: activeRoutines.toString(),
+                subtitle: 'Rutinas',
+                icon: Icons.repeat,
+                color: const Color(0xFF6366F1),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _KPICard(
+                title: 'Racha',
+                value: '${provider.productivityStreak}',
+                subtitle: 'días',
+                icon: Icons.local_fire_department,
+                color: const Color(0xFFEF4444),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
   Widget _buildTaskCompletionChart(AnalyticsProvider provider) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -128,16 +190,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Cumplimiento de Tareas (Semanal)',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: isSmallScreen ? 15 : 17,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 250,
+              height: isSmallScreen ? 200 : 250,
               child: BarChart(
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
@@ -166,15 +228,22 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                           ];
                           final i = value.toInt();
                           if (i < 0 || i >= days.length) return const SizedBox.shrink();
-                          return Text(days[i]);
+                          return Text(
+                            days[i],
+                            style: TextStyle(fontSize: isSmallScreen ? 10 : 12),
+                          );
                         },
                       ),
                     ),
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
+                        reservedSize: 35,
                         getTitlesWidget: (value, meta) {
-                          return Text('${value.toInt()}%');
+                          return Text(
+                            '${value.toInt()}%',
+                            style: TextStyle(fontSize: isSmallScreen ? 9 : 10),
+                          );
                         },
                       ),
                     ),
@@ -232,6 +301,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       return const SizedBox.shrink();
     }
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
     final total =
         provider.timeByProject.values.fold(0.0, (a, b) => a + b);
     if (total == 0) return const SizedBox.shrink();
@@ -252,16 +323,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Tiempo por Proyecto (Horas)',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: isSmallScreen ? 15 : 17,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 200,
+              height: isSmallScreen ? 180 : 200,
               child: PieChart(
                 PieChartData(
                   sections: List.generate(
@@ -273,11 +344,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                         value: entry.value,
                         title: '${entry.value.toStringAsFixed(1)}h',
                         color: colors[index % colors.length],
-                        radius: 80,
-                        titleStyle: const TextStyle(
+                        radius: isSmallScreen ? 70 : 80,
+                        titleStyle: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          fontSize: isSmallScreen ? 10 : 12,
                         ),
                       );
                     },
@@ -300,8 +371,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 12,
-                        height: 12,
+                        width: isSmallScreen ? 10 : 12,
+                        height: isSmallScreen ? 10 : 12,
                         decoration: BoxDecoration(
                           color: colors[index % colors.length],
                           shape: BoxShape.circle,
@@ -310,7 +381,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       const SizedBox(width: 8),
                       Text(
                         '${entry.key}: ${percentage.toStringAsFixed(1)}%',
-                        style: const TextStyle(fontSize: 12),
+                        style: TextStyle(fontSize: isSmallScreen ? 11 : 12),
                       ),
                     ],
                   );
@@ -561,51 +632,74 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 class _KPICard extends StatelessWidget {
   final String title;
   final String value;
+  final String? subtitle;
   final IconData icon;
   final Color color;
 
   const _KPICard({
     required this.title,
     required this.value,
+    this.subtitle,
     required this.icon,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       color: color.withOpacity(0.1),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(isSmallScreen ? 10.0 : 12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: color,
-              size: 24,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(
+                  icon,
+                  color: color,
+                  size: isSmallScreen ? 18 : 20,
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 16 : 18,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 4),
+            SizedBox(height: isSmallScreen ? 6 : 8),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Colors.grey,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 10 : 11,
+                color: Colors.grey[700],
+                fontWeight: FontWeight.w500,
               ),
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                subtitle!,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 9 : 10,
+                  color: Colors.grey[600],
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ],
         ),
       ),
