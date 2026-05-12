@@ -4,6 +4,7 @@ import 'package:zen/models/models.dart';
 import 'package:zen/providers/providers.dart';
 import 'package:zen/utils/utils.dart';
 import 'package:zen/utils/color_utils.dart';
+import 'package:zen/widgets/color_picker_widget.dart';
 
 class EditProjectDialog extends StatefulWidget {
   final Project project;
@@ -22,7 +23,6 @@ class _EditProjectDialogState extends State<EditProjectDialog> {
   DateTime? _endDate;
   bool _isSaving = false;
 
-  final List<String> _colors = DefaultColors.availableColors;
 
   @override
   void initState() {
@@ -71,34 +71,12 @@ class _EditProjectDialogState extends State<EditProjectDialog> {
               // Color Selector
               const Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Color del Proyecto'),
+                child: Text('Color del Proyecto', style: TextStyle(fontWeight: FontWeight.w600)),
               ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 40,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _colors.length,
-                  itemBuilder: (context, index) {
-                    final colorHex = _colors[index];
-                    final color = ColorUtils.hexToColor(colorHex);
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedColor = colorHex),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: _selectedColor == colorHex
-                              ? Border.all(color: Colors.black, width: 2)
-                              : null,
-                        ),
-                      ),
-                    );
-                  },
-                ),
+              const SizedBox(height: 12),
+              ColorPickerWidget(
+                selectedColor: _selectedColor,
+                onColorSelected: (hex) => setState(() => _selectedColor = hex),
               ),
               const SizedBox(height: 24),
 

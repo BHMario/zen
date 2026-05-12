@@ -8,6 +8,7 @@ import 'package:zen/providers/providers.dart';
 import 'package:zen/services/token_service.dart';
 import 'package:zen/theme/zen_theme.dart';
 import 'package:zen/utils/utils.dart';
+import 'package:zen/widgets/color_picker_widget.dart';
 import 'privacy_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -21,19 +22,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late Future<Map<String, dynamic>?> _userDetailsFuture;
   bool _isUploadingImage = false;
   Color _avatarBgColor = const Color(0xFF6366F1); // primario por defecto
-
-  static const List<Color> _avatarPalette = [
-    Color(0xFF6366F1), // Índigo (por defecto)
-    Color(0xFF0EA5E9), // Azul cielo
-    Color(0xFF10B981), // Esmeralda
-    Color(0xFFF59E0B), // Ámbar
-    Color(0xFFEF4444), // Rojo
-    Color(0xFFEC4899), // Rosa
-    Color(0xFF8B5CF6), // Violeta
-    Color(0xFF14B8A6), // Teal
-    Color(0xFFFF7043), // Naranja
-    Color(0xFF2A2A2A), // Carbón
-  ];
 
   Color _contrastColor(Color bg) {
     return bg.computeLuminance() > 0.45
@@ -51,70 +39,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showAvatarColorPicker(BuildContext context) {
+    String currentHex = ColorUtils.colorToHex(_avatarBgColor);
+
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setModalState) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40, height: 4,
-                    decoration: BoxDecoration(
-                      color: ZenTheme.borderColor,
-                      borderRadius: BorderRadius.circular(2),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (ctx, scrollCtrl) => Container(
+          decoration: const BoxDecoration(
+            color: ZenTheme.surfaceColor,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: ZenTheme.borderColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Color de fondo del avatar',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollCtrl,
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                  child: StatefulBuilder(
+                    builder: (ctx2, setSb) => ColorPickerWidget(
+                      selectedColor: currentHex,
+                      onColorSelected: (hex) async {
+                        currentHex = hex;
+                        final color = ColorUtils.hexToColor(hex);
+                        await TokenService.saveAvatarColor(hex);
+                        if (mounted) setState(() => _avatarBgColor = color);
+                        setSb(() {});
+                      },
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Color de fondo del avatar',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Listo'),
                 ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: _avatarPalette.map((color) {
-                    final isSelected = _avatarBgColor.toARGB32() == color.toARGB32();
-                    return GestureDetector(
-                      onTap: () async {
-                        final hex = '#${color.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
-                        await TokenService.saveAvatarColor(hex);
-                        if (mounted) setState(() => _avatarBgColor = color);
-                        setModalState(() {});
-                        if (context.mounted) Navigator.pop(context);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: isSelected
-                              ? Border.all(color: Colors.black54, width: 3)
-                              : null,
-                          boxShadow: isSelected
-                              ? [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 8, spreadRadius: 1)]
-                              : null,
-                        ),
-                        child: isSelected
-                            ? Icon(Icons.check, color: _contrastColor(color), size: 22)
-                            : null,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

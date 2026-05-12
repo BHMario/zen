@@ -9,6 +9,13 @@ import 'package:zen/widgets/widgets.dart';
 
 enum _LegendDotType { circle, square, diamond, bar }
 
+// Colores de acento por tipo de ítem
+const Color _taskColor = Color(0xFF6366F1);
+const Color _projectColor = Color(0xFF10B981);
+const Color _routineColor = Color(0xFF8B5CF6);
+const Color _goalColor = Color(0xFFEC4899);
+const Color _selectedDayColor = Color(0xFF6366F1);
+
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
 
@@ -395,19 +402,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Selector de mes
             _buildMonthSelector(context),
-            const Divider(),
-            // Filtros
+            const SizedBox(height: 4),
             _buildFilterBar(context),
-            const SizedBox(height: 12),
-            // Calendario
+            const SizedBox(height: 8),
             _buildCalendarGrid(context),
             const SizedBox(height: 24),
-            // Items del día seleccionado
             _buildSelectedDayItems(context),
             const SizedBox(height: 16),
-            // Leyenda
             _buildLegend(context),
             const SizedBox(height: 24),
           ],
@@ -418,30 +420,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildLegend(BuildContext context) {
     final items = [
-      (
-        'Tarea',
-        Icons.check_circle_outline,
-        const Color(0xFF6366F1),
-        _LegendDotType.circle,
-      ),
-      (
-        'Proyecto',
-        Icons.folder_outlined,
-        const Color(0xFF10B981),
-        _LegendDotType.square,
-      ),
-      (
-        'Rutina',
-        Icons.repeat,
-        const Color(0xFF8B5CF6),
-        _LegendDotType.diamond,
-      ),
-      (
-        'Objetivo',
-        Icons.flag_outlined,
-        const Color(0xFFEC4899),
-        _LegendDotType.bar,
-      ),
+      ('Tarea', Icons.check_circle_outline, _taskColor, _LegendDotType.circle),
+      ('Proyecto', Icons.folder_outlined, _projectColor, _LegendDotType.square),
+      ('Rutina', Icons.repeat, _routineColor, _LegendDotType.diamond),
+      ('Objetivo', Icons.flag_outlined, _goalColor, _LegendDotType.bar),
     ];
 
     return Padding(
@@ -449,19 +431,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: ZenTheme.dividerColor.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(12),
+          color: ZenTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: ZenTheme.borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Leyenda',
+              'LEYENDA',
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: ZenTheme.textLight,
-                    letterSpacing: 0.5,
+                    letterSpacing: 1.2,
                   ),
             ),
             const SizedBox(height: 12),
@@ -475,25 +464,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 return Column(
                   children: [
                     Container(
-                      width: 36,
-                      height: 36,
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
                         color: color.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
                       child: Center(
-                        child: _buildLegendDot(dotType, color),
+                        child: Icon(icon, size: 18, color: color),
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Icon(icon, size: 14, color: color),
-                    const SizedBox(height: 2),
+                    _buildLegendDot(dotType, color),
+                    const SizedBox(height: 4),
                     Text(
                       label,
                       style: TextStyle(
                         fontSize: 11,
                         color: ZenTheme.textLight,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -537,7 +526,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         );
       case _LegendDotType.bar:
         return Container(
-          width: 14,
+          width: 16,
           height: 6,
           decoration: BoxDecoration(
             color: color,
@@ -547,14 +536,210 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  Future<void> _showMonthYearPicker(BuildContext context) async {
+    int selectedYear = _displayedMonth.year;
+    int selectedMonth = _displayedMonth.month;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: ZenTheme.surfaceColor,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Handle bar
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: ZenTheme.borderColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Selector de año
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left),
+                        style: IconButton.styleFrom(
+                          backgroundColor: ZenTheme.dividerColor,
+                        ),
+                        onPressed: () =>
+                            setSheetState(() => selectedYear--),
+                      ),
+                      GestureDetector(
+                        onTap: () async {
+                          // Permitir escribir el año directamente
+                          final ctrl = TextEditingController(
+                              text: selectedYear.toString());
+                          final result = await showDialog<int>(
+                            context: ctx,
+                            builder: (d) => AlertDialog(
+                              title: const Text('Ir al año'),
+                              content: TextField(
+                                controller: ctrl,
+                                keyboardType: TextInputType.number,
+                                autofocus: true,
+                                decoration: const InputDecoration(
+                                    labelText: 'Año'),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(d),
+                                  child: const Text('Cancelar'),
+                                ),
+                                FilledButton(
+                                  onPressed: () {
+                                    final y = int.tryParse(ctrl.text.trim());
+                                    Navigator.pop(d, y);
+                                  },
+                                  child: const Text('Ir'),
+                                ),
+                              ],
+                            ),
+                          );
+                          ctrl.dispose();
+                          if (result != null &&
+                              result >= 1900 &&
+                              result <= 2100) {
+                            setSheetState(() => selectedYear = result);
+                          }
+                        },
+                        child: Text(
+                          selectedYear.toString(),
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: _selectedDayColor,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right),
+                        style: IconButton.styleFrom(
+                          backgroundColor: ZenTheme.dividerColor,
+                        ),
+                        onPressed: () =>
+                            setSheetState(() => selectedYear++),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Grid de meses
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 4,
+                      childAspectRatio: 2.0,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                    ),
+                    itemCount: 12,
+                    itemBuilder: (_, i) {
+                      final month = i + 1;
+                      final isSel = month == selectedMonth;
+                      final monthLabel = DateFormat('MMM', 'es_ES')
+                          .format(DateTime(selectedYear, month))
+                          .toUpperCase();
+                      return GestureDetector(
+                        onTap: () =>
+                            setSheetState(() => selectedMonth = month),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          decoration: BoxDecoration(
+                            color: isSel
+                                ? _selectedDayColor
+                                : ZenTheme.dividerColor,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: isSel
+                                ? [
+                                    BoxShadow(
+                                      color: _selectedDayColor
+                                          .withValues(alpha: 0.35),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    )
+                                  ]
+                                : [],
+                          ),
+                          child: Center(
+                            child: Text(
+                              monthLabel,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: isSel
+                                    ? Colors.white
+                                    : ZenTheme.textDark,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  // Botones
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Cancelar'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _selectedDayColor,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _displayedMonth =
+                                  DateTime(selectedYear, selectedMonth);
+                            });
+                            Navigator.pop(ctx);
+                          },
+                          child: const Text('Ir'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildMonthSelector(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
             icon: const Icon(Icons.chevron_left),
+            style: IconButton.styleFrom(
+              backgroundColor: ZenTheme.dividerColor,
+              foregroundColor: ZenTheme.textDark,
+            ),
             onPressed: () {
               setState(() {
                 _displayedMonth = DateTime(
@@ -564,23 +749,43 @@ class _CalendarScreenState extends State<CalendarScreen> {
               });
             },
           ),
-          Column(
-            children: [
-              Text(
-                DateFormat('MMMM yyyy', 'es_ES')
-                    .format(_displayedMonth)
-                    .toUpperCase(),
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              Text(
-                DateFormat('dd MMM yyyy', 'es_ES')
-                    .format(_selectedDate),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
+          GestureDetector(
+            onTap: () => _showMonthYearPicker(context),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      DateFormat('MMMM yyyy', 'es_ES')
+                          .format(_displayedMonth)
+                          .toUpperCase(),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_drop_down,
+                        color: _selectedDayColor, size: 20),
+                  ],
+                ),
+                Text(
+                  DateFormat('dd MMM yyyy', 'es_ES').format(_selectedDate),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: _selectedDayColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right),
+            style: IconButton.styleFrom(
+              backgroundColor: ZenTheme.dividerColor,
+              foregroundColor: ZenTheme.textDark,
+            ),
             onPressed: () {
               setState(() {
                 _displayedMonth = DateTime(
@@ -595,9 +800,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  Color _filterColor(String filterType) {
+    switch (filterType) {
+      case 'tasks':
+        return _taskColor;
+      case 'projects':
+        return _projectColor;
+      case 'routines':
+        return _routineColor;
+      case 'goals':
+        return _goalColor;
+      default:
+        return _selectedDayColor;
+    }
+  }
+
   Widget _buildFilterBar(BuildContext context) {
     final filters = [
-      ('all', 'Todos', Icons.apps),
+      ('all', 'Todos', Icons.apps_rounded),
       ('tasks', 'Tareas', Icons.check_circle_outline),
       ('projects', 'Proyectos', Icons.folder_outlined),
       ('routines', 'Rutinas', Icons.repeat),
@@ -612,13 +832,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
           for (final filter in filters) ...[
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: FilterChip(
-                label: Text(filter.$2),
-                avatar: Icon(filter.$3, size: 18),
-                selected: _filterType == filter.$1,
-                onSelected: (selected) {
-                  if (selected) setState(() => _filterType = filter.$1);
-                },
+              child: _buildFilterChip(
+                key: filter.$1,
+                label: filter.$2,
+                icon: filter.$3,
+                color: _filterColor(filter.$1),
+                isSelected: _filterType == filter.$1,
+                onTap: () => setState(() => _filterType = filter.$1),
               ),
             ),
           ],
@@ -627,48 +847,101 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  Widget _buildFilterChip({
+    required String key,
+    required String label,
+    required IconData icon,
+    required Color color,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? color : ZenTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isSelected ? color : ZenTheme.borderColor,
+            width: isSelected ? 1.5 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? Colors.white : ZenTheme.textLight,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.white : ZenTheme.textDark,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCalendarGrid(BuildContext context) {
     final firstDay =
         DateTime(_displayedMonth.year, _displayedMonth.month, 1);
     final firstWeekday = firstDay.weekday;
-
-    // Calcular la primera fecha a mostrar (puede ser del mes anterior)
     DateTime startDate = firstDay.subtract(Duration(days: firstWeekday - 1));
 
-    // Crear lista de 42 fechas (6 semanas)
     final calendarDates = <DateTime>[];
     for (int i = 0; i < 42; i++) {
       calendarDates.add(startDate.add(Duration(days: i)));
     }
 
+    final today = DateTime.now();
+
     return Consumer4<TaskProvider, ProjectProvider, RoutineProvider, GoalProvider>(
       builder: (context, taskProvider, projectProvider, routineProvider, goalProvider, _) {
         return Column(
           children: [
+            // Cabecera de días de la semana
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: const [
-                  Text('L'),
-                  Text('M'),
-                  Text('X'),
-                  Text('J'),
-                  Text('V'),
-                  Text('S'),
-                  Text('D'),
+                  _DayHeader('L'),
+                  _DayHeader('M'),
+                  _DayHeader('X'),
+                  _DayHeader('J'),
+                  _DayHeader('V'),
+                  _DayHeader('S', isWeekend: true),
+                  _DayHeader('D', isWeekend: true),
                 ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate:
                     const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 7,
-                  childAspectRatio: 1,
+                  childAspectRatio: 0.78,
                   crossAxisSpacing: 4,
                   mainAxisSpacing: 4,
                 ),
@@ -677,8 +950,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   final date = calendarDates[index];
                   final isCurrentMonth = date.year == _displayedMonth.year &&
                       date.month == _displayedMonth.month;
+                  final isToday = date.year == today.year &&
+                      date.month == today.month &&
+                      date.day == today.day;
+                  final isSelected = date.day == _selectedDate.day &&
+                      date.month == _selectedDate.month &&
+                      date.year == _selectedDate.year;
 
-                  // Obtener items filtrados
                   final items = _getFilteredItemsForDate(
                     date,
                     taskProvider,
@@ -687,64 +965,107 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     goalProvider,
                   );
 
-                  final isSelected = date.day == _selectedDate.day &&
-                      date.month == _selectedDate.month &&
-                      date.year == _selectedDate.year;
-
                   return GestureDetector(
                     onTap: () {
                       setState(() {
                         _selectedDate = date;
                       });
                     },
-                    child: Container(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
                       decoration: BoxDecoration(
+                        gradient: isSelected
+                            ? const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Color(0xFF6366F1),
+                                  Color(0xFF8B5CF6),
+                                ],
+                              )
+                            : null,
                         color: isSelected
-                            ? ZenTheme.primaryColor
+                            ? null
                             : isCurrentMonth
-                                ? Colors.transparent
+                                ? ZenTheme.surfaceColor
                                 : ZenTheme.dividerColor,
-                        borderRadius: BorderRadius.circular(8),
-                        border: isCurrentMonth && !isSelected
-                            ? Border.all(color: ZenTheme.borderColor, width: 1)
+                        borderRadius: BorderRadius.circular(10),
+                        border: isSelected
+                            ? null
+                            : isToday
+                                ? Border.all(
+                                    color: _selectedDayColor,
+                                    width: 2,
+                                  )
+                                : isCurrentMonth
+                                    ? Border.all(
+                                        color: ZenTheme.borderColor,
+                                        width: 1,
+                                      )
+                                    : null,
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: _selectedDayColor.withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ]
                             : null,
                       ),
-                      child: Stack(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Positioned(
-                            top: 4,
-                            left: 4,
-                            right: 4,
-                            child: Text(
-                              date.day.toString(),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelMedium
-                                  ?.copyWith(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : isCurrentMonth
-                                            ? null
-                                            : ZenTheme.textLight,
+                          Padding(
+                            padding: const EdgeInsets.only(top: 5, left: 5, right: 5),
+                            child: Align(
+                              alignment: Alignment.topCenter,
+                              child: Container(
+                                width: 22,
+                                height: 22,
+                                decoration: isToday && !isSelected
+                                    ? BoxDecoration(
+                                        color: _selectedDayColor.withValues(alpha: 0.12),
+                                        shape: BoxShape.circle,
+                                      )
+                                    : null,
+                                child: Center(
+                                  child: Text(
+                                    date.day.toString(),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: isSelected || isToday
+                                          ? FontWeight.w800
+                                          : FontWeight.w500,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : isToday
+                                              ? _selectedDayColor
+                                              : isCurrentMonth
+                                                  ? ZenTheme.textDark
+                                                  : ZenTheme.textLight
+                                                      .withValues(alpha: 0.5),
+                                    ),
                                   ),
+                                ),
+                              ),
                             ),
                           ),
                           if (items.isNotEmpty && isCurrentMonth)
-                            Positioned(
-                              bottom: 4,
-                              left: 4,
-                              right: 4,
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 5, left: 3, right: 3),
                               child: Wrap(
                                 spacing: 2,
                                 runSpacing: 2,
                                 alignment: WrapAlignment.center,
                                 children: items
-                                    .take(4)
-                                    .map((item) =>
-                                      _buildItemDot(item, isSelected))
+                                    .take(5)
+                                    .map((item) => _buildItemDot(item, isSelected))
                                     .toList(),
                               ),
-                            ),
+                            )
+                          else
+                            const SizedBox(height: 8),
                         ],
                       ),
                     ),
@@ -778,47 +1099,91 @@ class _CalendarScreenState extends State<CalendarScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Actividades del Día',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      Text(
-                        DateTimeUtils.getRelativeDate(_selectedDate),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Rutinas completadas esta semana: $weeklyRoutinesDone',
-                        style: Theme.of(context)
-                            .textTheme
-                            .labelSmall
-                            ?.copyWith(color: ZenTheme.successColor),
-                      ),
+              // Cabecera del día seleccionado
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Color(0xFF6366F1),
+                      Color(0xFF8B5CF6),
                     ],
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _selectedDayColor.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
-                    decoration: BoxDecoration(
-                      color: ZenTheme.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Actividades del Día',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          DateTimeUtils.getRelativeDate(_selectedDate),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                        if (weeklyRoutinesDone > 0) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.check_circle,
+                                  size: 12, color: Colors.white70),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Rutinas esta semana: $weeklyRoutinesDone',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
-                    child: Text(
-                      '${items.length}',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: ZenTheme.primaryColor,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${items.length}',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
               if (items.isEmpty)
@@ -843,7 +1208,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: items.length,
                   separatorBuilder: (context, index) =>
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final item = items[index];
                     final itemColor = _getItemColor(item);
@@ -860,7 +1225,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         : false;
 
                     return InkWell(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(14),
                       onTap: () async {
                         if (isTask) {
                           if (item.status == TaskStatus.completed) {
@@ -915,22 +1280,40 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         }
                       },
                       child: Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: itemColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: itemColor.withValues(alpha: 0.3)),
+                          color: ZenTheme.surfaceColor,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: itemColor.withValues(alpha: 0.25),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: itemColor.withValues(alpha: 0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
+                                // Barra de color lateral
                                 Container(
                                   width: 4,
-                                  height: 24,
+                                  height: 40,
                                   decoration: BoxDecoration(
-                                    color: itemColor,
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        itemColor,
+                                        itemColor.withValues(alpha: 0.5),
+                                      ],
+                                    ),
                                     borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
@@ -943,26 +1326,35 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                         itemTitle,
                                         style: Theme.of(context)
                                             .textTheme
-                                            .bodyMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            decoration: isRoutineCompletedToday
-                                            ? TextDecoration.lineThrough
-                                            : null,
-                                          ),
+                                            .bodyLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              color: ZenTheme.textDark,
+                                              decoration: isRoutineCompletedToday
+                                                  ? TextDecoration.lineThrough
+                                                  : null,
+                                            ),
                                       ),
-                                      if (itemDescription != null)
-                                        Text(
-                                          itemDescription,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
+                                      if (itemDescription != null &&
+                                          itemDescription.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 3),
+                                          child: Text(
+                                            itemDescription,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.copyWith(
+                                                  color: ZenTheme.textLight,
+                                                ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
                                     ],
                                   ),
                                 ),
+                                const SizedBox(width: 8),
                                 _buildTypeBadge(item, context),
                                 if (isTask)
                                   PopupMenuButton<String>(
@@ -998,26 +1390,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   IconButton(
                                     tooltip: 'Actualizar progreso',
                                     onPressed: () => _updateGoalProgress(item),
-                                    icon: const Icon(Icons.trending_up),
+                                    icon: Icon(Icons.trending_up,
+                                        color: itemColor),
                                   ),
                                 if (isRoutine)
                                   IconButton(
                                     tooltip: isRoutineCompletedToday
                                         ? 'Marcar pendiente hoy'
                                         : 'Marcar completada hoy',
-                                    onPressed: () => _toggleRoutineComplete(item),
+                                    onPressed: () =>
+                                        _toggleRoutineComplete(item),
                                     icon: Icon(
                                       isRoutineCompletedToday
                                           ? Icons.check_circle
                                           : Icons.check_circle_outline,
                                       color: isRoutineCompletedToday
                                           ? ZenTheme.successColor
-                                          : null,
+                                          : ZenTheme.textLight,
                                     ),
                                   ),
                               ],
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 10),
                             Wrap(
                               spacing: 6,
                               runSpacing: 4,
@@ -1084,7 +1478,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return 'Cada $days días';
   }
 
-  // Métodos para obtener items filtrados
   List<dynamic> _getFilteredItemsForDate(
     DateTime date,
     TaskProvider taskProvider,
@@ -1114,70 +1507,65 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Color _getItemColor(dynamic item) {
-    String hex = '#6366f1';
-    if (item is Task) {
-      hex = item.color;
-    } else if (item is Project) {
-      hex = item.color;
-    } else if (item is Routine) {
-      hex = item.color;
-    } else if (item is Goal) {
-      hex = item.color;
-    }
-    return ColorUtils.hexToColor(hex);
+    if (item is Task) return _taskColor;
+    if (item is Project) return _projectColor;
+    if (item is Routine) return _routineColor;
+    if (item is Goal) return _goalColor;
+    return _taskColor;
   }
 
   Widget _buildItemDot(dynamic item, bool isSelected) {
     final color = isSelected ? Colors.white : _getItemColor(item);
     if (item is Task) {
       return Container(
-        width: 6,
-        height: 6,
+        width: 8,
+        height: 8,
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       );
     } else if (item is Project) {
       return Container(
-        width: 6,
-        height: 6,
+        width: 8,
+        height: 8,
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(1),
+          borderRadius: BorderRadius.circular(2),
         ),
       );
     } else if (item is Routine) {
       return Transform.rotate(
         angle: 0.7854,
         child: Container(
-          width: 5,
-          height: 5,
+          width: 7,
+          height: 7,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(0.5),
+            borderRadius: BorderRadius.circular(1),
           ),
         ),
       );
     } else if (item is Goal) {
       return Container(
-        width: 8,
-        height: 4,
+        width: 10,
+        height: 5,
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(2),
+          borderRadius: BorderRadius.circular(2.5),
         ),
       );
     }
     return Container(
-      width: 6,
-      height: 6,
+      width: 8,
+      height: 8,
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
+
   String _getItemTitle(dynamic item, ProjectProvider projectProvider) {
     if (item is Task) {
       if (item.projectId == null) return item.title;
       final projectName = projectProvider.getProjectById(item.projectId!)?.name;
       if (projectName == null || projectName.isEmpty) return item.title;
-      return '${item.title} (Proyecto $projectName)';
+      return '${item.title} · $projectName';
     } else if (item is Project) {
       return item.getDateLabel(_selectedDate);
     } else if (item is Routine) {
@@ -1209,29 +1597,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (item is Task) {
       icon = Icons.check_circle_outline;
       label = 'Tarea';
-      color = ColorUtils.hexToColor(item.color);
+      color = _taskColor;
     } else if (item is Project) {
       icon = Icons.folder_outlined;
       label = 'Proyecto';
-      color = ColorUtils.hexToColor(item.color);
+      color = _projectColor;
     } else if (item is Routine) {
       icon = Icons.repeat;
       label = 'Rutina';
-      color = ColorUtils.hexToColor(item.color);
+      color = _routineColor;
     } else if (item is Goal) {
       icon = Icons.flag_outlined;
       label = 'Objetivo';
-      color = ColorUtils.hexToColor(item.color);
+      color = _goalColor;
     } else {
       return const SizedBox.shrink();
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1241,8 +1629,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           Text(
             label,
             style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
               color: color,
             ),
           ),
@@ -1261,94 +1649,95 @@ class _CalendarScreenState extends State<CalendarScreen> {
             .getProjectById(item.projectId!)
             ?.name;
         if (projectName != null && projectName.isNotEmpty) {
-          chips.add(Chip(
-            label: Text(
-              'Proyecto $projectName',
-              style: const TextStyle(fontSize: 10),
-            ),
-            visualDensity: VisualDensity.compact,
-            backgroundColor: ZenTheme.secondaryLight,
-          ));
+          chips.add(_buildSmallChip('📁 $projectName', ZenTheme.secondaryLight));
         }
       }
 
-      // Agregar labels
       for (final label in item.labels) {
-        chips.add(Chip(
-          label: Text(label),
-          visualDensity: VisualDensity.compact,
-        ));
+        chips.add(_buildSmallChip(label, ZenTheme.dividerColor));
       }
 
-      // Agregar estado
-      chips.add(Chip(
-        label: Text(
-          'Entrega ${DateFormat('dd/MM').format(item.dueDate)}',
-          style: const TextStyle(fontSize: 10),
-        ),
-        visualDensity: VisualDensity.compact,
-        backgroundColor: ZenTheme.dividerColor,
+      chips.add(_buildSmallChip(
+        '📅 ${DateFormat('dd/MM').format(item.dueDate)}',
+        ZenTheme.dividerColor,
       ));
 
-      chips.add(Chip(
-        label: Text(
-          _getStatusLabel(item.status),
-          style: const TextStyle(fontSize: 10),
-        ),
-        visualDensity: VisualDensity.compact,
-        backgroundColor: item.status == TaskStatus.completed
-            ? ZenTheme.successColor.withValues(alpha: 0.2)
+      chips.add(_buildSmallChip(
+        _getStatusLabel(item.status),
+        item.status == TaskStatus.completed
+            ? ZenTheme.successColor.withValues(alpha: 0.15)
             : item.status == TaskStatus.inProgress
                 ? ZenTheme.warningColor.withValues(alpha: 0.2)
                 : ZenTheme.borderColor,
       ));
     } else if (item is Project) {
-      chips.add(Chip(
-        label: Text(
-          _getProjectStatusLabel(item.status),
-          style: const TextStyle(fontSize: 10),
-        ),
-        visualDensity: VisualDensity.compact,
-        backgroundColor: ZenTheme.secondaryLight,
-      ));
+      chips.add(_buildSmallChip(_getProjectStatusLabel(item.status), ZenTheme.secondaryLight));
     } else if (item is Routine) {
       final routineProvider = context.read<RoutineProvider>();
       final completedToday =
           routineProvider.isRoutineCompletedOnDate(item.id, _selectedDate);
 
-      chips.add(Chip(
-        label: Text(
-          _getRoutineFrequencyLabel(item),
-          style: const TextStyle(fontSize: 10),
-        ),
-        visualDensity: VisualDensity.compact,
-        backgroundColor: ZenTheme.secondaryLight,
-      ));
-
-      chips.add(Chip(
-        label: Text(
-          completedToday ? 'Completada hoy' : 'Pendiente hoy',
-          style: const TextStyle(fontSize: 10),
-        ),
-        visualDensity: VisualDensity.compact,
-        backgroundColor: completedToday
-            ? ZenTheme.successColor.withValues(alpha: 0.2)
+      chips.add(_buildSmallChip(_getRoutineFrequencyLabel(item), ZenTheme.secondaryLight));
+      chips.add(_buildSmallChip(
+        completedToday ? '✅ Completada hoy' : '⏳ Pendiente hoy',
+        completedToday
+            ? ZenTheme.successColor.withValues(alpha: 0.15)
             : ZenTheme.borderColor,
       ));
     } else if (item is Goal) {
-      chips.add(Chip(
-        label: Text(
-          item.isCompleted ? 'Completado' : 'En Progreso',
-          style: const TextStyle(fontSize: 10),
-        ),
-        visualDensity: VisualDensity.compact,
-        backgroundColor: item.isCompleted
-            ? ZenTheme.successColor.withValues(alpha: 0.2)
-            : ZenTheme.warningColor.withValues(alpha: 0.2),
+      chips.add(_buildSmallChip(
+        item.isCompleted ? '🏆 Completado' : '🎯 En Progreso',
+        item.isCompleted
+            ? ZenTheme.successColor.withValues(alpha: 0.15)
+            : ZenTheme.warningColor.withValues(alpha: 0.15),
       ));
     }
 
     return chips;
   }
+
+  Widget _buildSmallChip(String label, Color bgColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: ZenTheme.textDark,
+        ),
+      ),
+    );
+  }
 }
 
+// Widget auxiliar para cabecera de día de la semana
+class _DayHeader extends StatelessWidget {
+  final String label;
+  final bool isWeekend;
+
+  const _DayHeader(this.label, {this.isWeekend = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 32,
+      child: Center(
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: isWeekend
+                ? const Color(0xFF6366F1).withValues(alpha: 0.7)
+                : ZenTheme.textLight,
+          ),
+        ),
+      ),
+    );
+  }
+}

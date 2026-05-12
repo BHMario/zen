@@ -200,23 +200,77 @@ npm -v
 mysql --version
 ```
 
-### 3. Configurar la base de datos
+### 3. Configurar la base de datos (MySQL)
 
-Este proyecto usa la base de datos `zen_db` y el script de inicialización crea tablas automáticamente.
+Este proyecto usa la base de datos `zen_db`. El script `init-db.js` crea automáticamente todas las tablas necesarias.
 
-```bash
-mysql -u root -p
-CREATE DATABASE IF NOT EXISTS zen_db;
-EXIT;
+#### 3.1 — Crear el archivo `.env` primero
+
+Crea el archivo `zen-backend/.env` con tus credenciales antes de inicializar la BD:
+
+```env
+PORT=3000
+
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=tu_contraseña
+DB_NAME=zen_db
+
+JWT_SECRET=tu_clave_secreta_jwt
+JWT_EXPIRATION=24h
 ```
 
-### 4. Configurar y ejecutar backend
-
-Abre una terminal en la raíz del proyecto y ejecuta:
+#### 3.2 — Instalar dependencias del backend
 
 ```bash
 cd zen-backend
 npm install
+```
+
+#### 3.3 — Inicializar la base de datos
+
+Este comando conecta a MySQL, crea la base de datos `zen_db` si no existe y crea todas las tablas con sus índices y relaciones:
+
+```bash
+node init-db.js
+```
+
+Salida esperada:
+
+```
+✅ Conectado a MySQL
+✅ Base de datos zen_db lista
+✅ Tabla users creada
+✅ Tabla projects creada
+✅ Tabla tasks creada
+✅ Tabla reminders creada
+✅ Tabla routines creada
+✅ Tabla routine_completions creada
+✅ Tabla goals creada
+✅ Todas las tablas inicializadas correctamente
+✅ Inicialización completada
+```
+
+> **Nota:** Si ya tienes una instalación previa, el script detecta columnas existentes y añade solo las que faltan, sin borrar datos.
+
+#### 3.4 — (Opcional) Cargar datos de prueba
+
+Si quieres poblar la BD con datos de ejemplo para probar la app:
+
+```bash
+node seed-data.js
+```
+
+### 4. Ejecutar el backend
+
+Con la BD ya inicializada, arranca el servidor:
+
+```bash
+# Desarrollo (con hot-reload)
+npm run dev
+
+# Producción
+npm start
 ```
 
 El servidor arrancará en `http://localhost:3000`. Verifica con:
@@ -276,7 +330,9 @@ flutter build windows
 
 ## Configuración de Variables de Entorno
 
-Crea un archivo `.env` en `zen-backend/`:
+> ℹ️ El archivo `.env` se crea en el **Paso 3.1** de la sección de instalación. A continuación se muestra la referencia completa de todas las variables disponibles.
+
+Crea (o edita) el archivo `.env` en `zen-backend/`:
 
 ```env
 # Servidor

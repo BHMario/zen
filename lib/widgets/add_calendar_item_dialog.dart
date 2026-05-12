@@ -7,7 +7,7 @@ import 'package:zen/providers/providers.dart';
 import 'package:zen/services/services.dart';
 import 'package:zen/theme/zen_theme.dart';
 import 'package:zen/utils/color_utils.dart';
-
+import 'package:zen/widgets/color_picker_widget.dart';
 class AddCalendarItemDialog extends StatefulWidget {
   final String? initialType;
   final String? initialProjectId;
@@ -44,9 +44,6 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
   bool _isUploadingAttachment = false;
   bool _setReminder = false;
   DateTime? _reminderDateTime;
-
-  // Paleta de colores disponibles desde DefaultColors
-  List<String> get _availableColors => DefaultColors.availableColors;
 
   @override
   void initState() {
@@ -805,25 +802,9 @@ class _AddCalendarItemDialogState extends State<AddCalendarItemDialog> {
                     style: Theme.of(context).textTheme.labelMedium,
                   ),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: _availableColors.map((color) {
-                      final isSelected = _selectedColor == color;
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedColor = color),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Color(int.parse('0xFF${color.substring(1)}')),
-                            shape: BoxShape.circle,
-                            border: isSelected
-                                ? Border.all(color: Colors.black, width: 2)
-                                : null,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                  ColorPickerWidget(
+                    selectedColor: _selectedColor,
+                    onColorSelected: (hex) => setState(() => _selectedColor = hex),
                   ),
                 ],
               ),

@@ -50,8 +50,12 @@ class GoalProvider extends ChangeNotifier {
           timeframe: _parseGoalTimeframe(goalData['timeframe'] as String? ?? 'mediumTerm'),
           startDate: parseDate(goalData['start_date'] as String?) ?? DateTime.now(),
           targetDate: parseDate(goalData['target_date'] as String?) ?? DateTime.now().add(const Duration(days: 365)),
-          targetValue: (goalData['target_value'] as num?)?.toDouble() ?? 1.0,
-          currentValue: (goalData['current_value'] as num?)?.toDouble() ?? 0.0,
+          targetValue: (goalData['target_value'] is num
+              ? (goalData['target_value'] as num).toDouble()
+              : double.tryParse(goalData['target_value']?.toString() ?? '')) ?? 1.0,
+          currentValue: (goalData['current_value'] is num
+              ? (goalData['current_value'] as num).toDouble()
+              : double.tryParse(goalData['current_value']?.toString() ?? '')) ?? 0.0,
           unit: goalData['unit'] as String? ?? 'unidades',
           createdBy: userId,
           createdAt: DateTime.parse(goalData['created_at'] as String? ?? DateTime.now().toIso8601String()).toLocal(),
