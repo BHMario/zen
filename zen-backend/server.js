@@ -43,6 +43,7 @@ pool.getConnection().then(async conn => {
     'ALTER TABLE goals ADD COLUMN unit VARCHAR(50) DEFAULT NULL',
     'ALTER TABLE goals ADD COLUMN start_date DATE',
     'ALTER TABLE goals ADD COLUMN is_completed BOOLEAN DEFAULT FALSE',
+    "ALTER TABLE goals ADD COLUMN timeframe VARCHAR(50) DEFAULT 'mediumTerm'",
     // tasks attachments
     'ALTER TABLE tasks ADD COLUMN attachment_url TEXT',
     "ALTER TABLE tasks ADD COLUMN attachment_type VARCHAR(20) DEFAULT NULL",

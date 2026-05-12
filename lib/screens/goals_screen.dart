@@ -92,11 +92,17 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   ),
                   trailing: const Icon(Icons.calendar_today_outlined),
                   onTap: () async {
+                    final now = DateTime.now();
+                    final today = DateTime(now.year, now.month, now.day);
+                    final lastDate = today.add(const Duration(days: 3650));
+                    final safeInitial = targetDate.isBefore(today)
+                        ? today
+                        : (targetDate.isAfter(lastDate) ? lastDate : targetDate);
                     final picked = await showDatePicker(
                       context: ctx,
-                      initialDate: targetDate,
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 3650)),
+                      initialDate: safeInitial,
+                      firstDate: today,
+                      lastDate: lastDate,
                     );
                     if (picked != null) {
                       setLocalState(() => targetDate = picked);
@@ -233,11 +239,18 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   ),
                   trailing: const Icon(Icons.calendar_today_outlined),
                   onTap: () async {
+                    final now = DateTime.now();
+                    final today = DateTime(now.year, now.month, now.day);
+                    final firstDate = today.subtract(const Duration(days: 3650));
+                    final lastDate = today.add(const Duration(days: 3650));
+                    final safeInitial = targetDate.isBefore(firstDate)
+                        ? firstDate
+                        : (targetDate.isAfter(lastDate) ? lastDate : targetDate);
                     final picked = await showDatePicker(
                       context: ctx,
-                      initialDate: targetDate,
-                      firstDate: DateTime.now().subtract(const Duration(days: 3650)),
-                      lastDate: DateTime.now().add(const Duration(days: 3650)),
+                      initialDate: safeInitial,
+                      firstDate: firstDate,
+                      lastDate: lastDate,
                     );
                     if (picked != null) {
                       setLocalState(() => targetDate = picked);

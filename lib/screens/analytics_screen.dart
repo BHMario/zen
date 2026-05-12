@@ -378,8 +378,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
+  static const Map<String, Color> _categoryColors = {
+    'Trabajo':    Color(0xFF3B82F6),
+    'Personal':   Color(0xFF10B981),
+    'Deporte':    Color(0xFFF97316),
+    'Salud':      Color(0xFFEF4444),
+    'Finanzas':   Color(0xFF8B5CF6),
+    'Educación':  Color(0xFF06B6D4),
+    'Relaciones': Color(0xFFEC4899),
+    'Otros':      Color(0xFF9CA3AF),
+    'Sin datos':  Color(0xFFD1D5DB),
+  };
+
   Widget _buildWorkLifeBalanceChart(AnalyticsProvider provider) {
-    final colors = [Colors.blue, Colors.green];
+    final entries = provider.workLifeBalance.entries.toList();
 
     return Card(
       elevation: 0,
@@ -390,58 +402,46 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Balance Trabajo/Vida Personal',
+              'Distribución de Actividad',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 200,
+              height: 220,
               child: PieChart(
                 PieChartData(
-                  sections: [
-                    PieChartSectionData(
-                      value: provider.workLifeBalance['Trabajo'] ?? 50,
-                      title:
-                          '${(provider.workLifeBalance['Trabajo'] ?? 50).toStringAsFixed(1)}%',
-                      color: colors[0],
-                      radius: 80,
+                  sections: List.generate(entries.length, (i) {
+                    final entry = entries[i];
+                    final color = _categoryColors[entry.key] ?? const Color(0xFF9CA3AF);
+                    return PieChartSectionData(
+                      value: entry.value,
+                      title: entry.key == 'Sin datos'
+                          ? 'Sin datos'
+                          : '${entry.value.toStringAsFixed(1)}%',
+                      color: color,
+                      radius: 85,
                       titleStyle: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                        fontSize: 11,
                       ),
-                    ),
-                    PieChartSectionData(
-                      value: provider.workLifeBalance['Personal'] ?? 50,
-                      title:
-                          '${(provider.workLifeBalance['Personal'] ?? 50).toStringAsFixed(1)}%',
-                      color: colors[1],
-                      radius: 80,
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+                    );
+                  }),
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _LegendItem(
-                  color: colors[0],
-                  label: 'Trabajo',
-                  percentage: provider.workLifeBalance['Trabajo'] ?? 50,
-                ),
-                _LegendItem(
-                  color: colors[1],
-                  label: 'Personal',
-                  percentage: provider.workLifeBalance['Personal'] ?? 50,
-                ),
-              ],
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: entries.map((entry) {
+                final color = _categoryColors[entry.key] ?? const Color(0xFF9CA3AF);
+                return _LegendItem(
+                  color: color,
+                  label: entry.key,
+                  percentage: entry.value,
+                );
+              }).toList(),
             ),
           ],
         ),
