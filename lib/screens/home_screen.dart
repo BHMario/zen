@@ -3,10 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:zen/providers/providers.dart';
 import 'package:zen/screens/calendar_screen.dart';
 import 'package:zen/screens/analytics_screen.dart';
-import 'package:zen/screens/tasks_screen.dart';
-import 'package:zen/screens/projects_screen.dart';
-import 'package:zen/screens/routines_screen.dart';
-import 'package:zen/screens/goals_screen.dart';
+import 'package:zen/screens/productivity_screen.dart';
 import 'package:zen/screens/profile_screen.dart';
 import 'package:zen/services/services.dart';
 import 'package:zen/theme/zen_theme.dart';
@@ -26,10 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = [
     const CalendarScreen(),
     const AnalyticsScreen(),
-    const TasksScreen(),
-    const ProjectsScreen(),
-    const RoutinesScreen(),
-    const GoalsScreen(),
+    const ProductivityScreen(),
     const ProfileScreen(),
   ];
 
@@ -159,32 +153,17 @@ class _HomeScreenState extends State<HomeScreen> {
             NavigationDestination(
               icon: Icon(Icons.trending_up_outlined),
               selectedIcon: Icon(Icons.trending_up),
-              label: 'Análisis',
+              label: 'Estadísticas',
             ),
             NavigationDestination(
-              icon: Icon(Icons.checklist_outlined),
-              selectedIcon: Icon(Icons.checklist),
-              label: 'Tareas',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.folder_outlined),
-              selectedIcon: Icon(Icons.folder),
-              label: 'Proyecto',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.repeat_outlined),
-              selectedIcon: Icon(Icons.repeat),
-              label: 'Rutinas',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.flag_outlined),
-              selectedIcon: Icon(Icons.flag),
-              label: 'Objetivos',
+              icon: Icon(Icons.rocket_launch_outlined),
+              selectedIcon: Icon(Icons.rocket_launch),
+              label: 'Productividad',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outline),
               selectedIcon: Icon(Icons.person),
-              label: 'Perfil',
+              label: 'Mi Perfil',
             ),
           ],
         ),
