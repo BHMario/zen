@@ -1,5 +1,9 @@
 # Zen - Gestor de Productividad Personal
 
+
+
+
+
 <p align="center">
   <strong>Tu compañero digital para una vida equilibrada y productiva</strong>
 </p>
